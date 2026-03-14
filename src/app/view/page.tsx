@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Edit3, ArrowLeft, Share2 } from "lucide-react";
 import { encodeBillData } from "@/lib/utils/share";
 import { useBillStore } from "@/store/useBillStore";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 export default function ViewPage() {
     const router = useRouter();
@@ -62,39 +64,38 @@ export default function ViewPage() {
     if (!data) return null;
 
     return (
-        <main className="flex min-h-screen flex-col items-center p-6 md:p-12 bg-stone-50 text-stone-900">
-            <div className="w-full max-w-5xl space-y-8">
-                <header className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-center sm:text-left">
-                        <h1 className="text-3xl font-black tracking-tight text-stone-900">
-                            Billify<span className="text-indigo-600">.</span>
-                        </h1>
+        <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 selection:bg-blue-500/20">
+            <Header />
+            <div className="flex-1 flex flex-col">
+                <main className="flex-1 max-w-screen-2xl mx-auto w-full p-6 py-12 space-y-8">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-black text-stone-900 tracking-tight">{data.groupName || "Hóa đơn"}</h1>
+                            <p className="text-sm text-stone-500 font-medium">Hóa đơn công khai</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={handleShare}
+                                className="font-bold border-stone-200 text-stone-700 bg-white hover:bg-stone-50 h-10 px-4 transition-none"
+                            >
+                                <Share2 className="h-4 w-4 mr-2" /> Chia sẻ
+                            </Button>
+                            <Button
+                                onClick={handleEdit}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg h-10 px-6 flex items-center gap-2 shadow-sm transition-none"
+                            >
+                                <Edit3 className="h-4 w-4 mr-2" /> Chỉnh sửa
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex gap-3">
-                        <Button
-                            variant="outline"
-                            onClick={handleShare}
-                            className="border-stone-200 text-stone-700 bg-white hover:bg-stone-50 text-stone-900 font-bold rounded-lg h-10 px-4 transition-none"
-                        >
-                            <Share2 className="h-4 w-4 mr-2" /> Chia sẻ
-                        </Button>
-                        <Button
-                            onClick={handleEdit}
-                            className="bg-blue-600 text-white hover:bg-blue-700 hover:text-white hover:bg-blue-600 text-white hover:bg-blue-700 text-stone-900 font-bold rounded-lg h-10 px-4 transition-none"
-                        >
-                            <Edit3 className="h-4 w-4 mr-2" /> Chỉnh sửa
-                        </Button>
+
+                    <div className="border border-stone-200 bg-white rounded-xl overflow-hidden shadow-sm">
+                        <BillTable initialData={data} isReadOnly={true} />
                     </div>
-                </header>
-
-                <div className="border border-stone-200 bg-white rounded-xl overflow-hidden shadow-sm">
-                    <BillTable initialData={data} isReadOnly={true} />
-                </div>
-
-                <footer className="text-center py-8">
-                    <p className="text-stone-400 text-xs font-bold uppercase tracking-[0.3em]">Cung cấp bởi Billify © 2024</p>
-                </footer>
+                </main>
             </div>
-        </main>
+            <Footer />
+        </div>
     );
 }
