@@ -1,8 +1,8 @@
 "use client";
-
 import React, { useState, useMemo, useRef } from "react";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { cn } from "@/lib/utils";
 import {
     Table,
     TableBody,
@@ -34,6 +34,19 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -44,12 +57,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Plus,
     UserPlus,
-    Heart,
+    Crown,
     BarChart3,
     Users,
     PieChart,
     Activity,
     ChevronRight,
+    ChevronsUpDown,
     TrendingUp,
     Sparkles,
     Settings2,
@@ -57,10 +71,15 @@ import {
     UploadCloud,
     Trash2,
     Copy,
-    Check
+    Check,
+    Loader2,
+    AlertCircle,
+    Save,
+    Image as ImageIcon
 } from "lucide-react";
 import CurrencyInput from 'react-currency-input-field';
 import { IMaskInput } from "react-imask";
+import { VIETNAMESE_BANKS } from "@/lib/constants/banks";
 
 interface Member {
     id: string;
@@ -134,6 +153,7 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
     const [isDonationDialogOpen, setIsDonationDialogOpen] = useState(false);
     const [newDonationAmount, setNewDonationAmount] = useState<string>("0");
     const [newDonationMemberId, setNewDonationMemberId] = useState<string>("");
+    const [openBankDropdown, setOpenBankDropdown] = useState(false);
 
     // QR Cropper States
     const [isCropperOpen, setIsCropperOpen] = useState(false);
@@ -244,12 +264,16 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
             itemSplits[item.id] = participantCount > 0 ? item.amount / participantCount : 0;
         });
 
+        const reductionRatio = totalBillAmount > 0
+            ? Math.max(0, (totalBillAmount - totalDonationsAmount) / totalBillAmount)
+            : (totalDonationsAmount > 0 ? 0 : 1);
+
         members.forEach(member => {
             let share = 0;
             items.forEach(item => {
                 if (participation[member.id]?.[item.id]) share += itemSplits[item.id];
             });
-            memberShares[member.id] = share;
+            memberShares[member.id] = share * reductionRatio;
         });
 
         donations.forEach(d => {
@@ -270,7 +294,8 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
             sponsors,
             totalDonationsAmount,
             totalBillAmount,
-            avgPerPerson
+            avgPerPerson,
+            reductionRatio
         };
     }, [members, items, donations, participation]);
 
@@ -309,6 +334,11 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
         if (amount <= 0) return;
         setDonations([...donations, { id: `d${Date.now()}`, memberId: newDonationMemberId, amount }]);
         setIsDonationDialogOpen(false);
+    };
+
+    const handleRemoveDonations = (memberId: string) => {
+        if (isReadOnly) return;
+        setDonations(prev => prev.filter(d => d.memberId !== memberId));
     };
 
     // MEMBER LOGIC
@@ -387,13 +417,61 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all">
                             <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
-                            <Input
-                                value={paymentBank}
-                                onChange={(e) => !isReadOnly && setPaymentBank(e.target.value)}
-                                readOnly={isReadOnly}
-                                className="border-none bg-transparent text-stone-900 placeholder:text-stone-400 h-8 p-0 text-sm font-bold text-stone-700 focus-visible:ring-0 min-w-[120px] placeholder:text-stone-700"
-                                placeholder="VD: Techcombank..."
-                            />
+                            {isReadOnly ? (
+                                <span className="text-sm font-bold text-stone-700">{paymentBank || "---"}</span>
+                            ) : (
+                                <Popover open={openBankDropdown} onOpenChange={setOpenBankDropdown}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            role="combobox"
+                                            aria-expanded={openBankDropdown}
+                                            className="h-8 justify-between px-0 font-bold text-sm text-stone-700 hover:bg-transparent min-w-[150px] shadow-none"
+                                        >
+                                            <span className="truncate">
+                                                {paymentBank
+                                                    ? VIETNAMESE_BANKS.find((bank) => bank.name === paymentBank)?.name || paymentBank
+                                                    : "Chọn ngân hàng..."}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Tìm ngân hàng..." className="h-9" />
+                                            <CommandList>
+                                                <CommandEmpty>Không tìm thấy ngân hàng.</CommandEmpty>
+                                                <CommandGroup>
+                                                    <ScrollArea className="h-64">
+                                                        {VIETNAMESE_BANKS.map((bank) => (
+                                                            <CommandItem
+                                                                key={bank.id}
+                                                                value={`${bank.name} ${bank.fullName}`}
+                                                                onSelect={() => {
+                                                                    setPaymentBank(bank.name);
+                                                                    setOpenBankDropdown(false);
+                                                                }}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        paymentBank === bank.name ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold">{bank.name}</span>
+                                                                    <span className="text-[10px] text-stone-500 truncate max-w-[220px]">{bank.fullName}</span>
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </ScrollArea>
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
                         </div>
                         <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all group">
                             <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
@@ -502,7 +580,11 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                     {stats.totalDonationsAmount > 0 && (
                         <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
                             <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Tổng quỹ ủng hộ</p>
-                            <p className="text-3xl font-black text-indigo-600 tracking-tighter">+<span className="font-mono tracking-tighter">{formatCurrency(stats.totalDonationsAmount)}</span></p>
+                            <p className="text-3xl font-black text-indigo-600 tracking-tighter truncate">+<span className="font-mono tracking-tighter">{formatCurrency(stats.totalDonationsAmount)}</span></p>
+                            <p className="text-[10px] font-bold text-stone-400 mt-2 flex items-center gap-1.5 italic">
+                                <span>Cả nhóm được giảm:</span>
+                                <span className="text-indigo-500 not-italic">{Math.round((1 - stats.reductionRatio) * 100)}%</span>
+                            </p>
                         </div>
                     )}
                 </div>
@@ -510,45 +592,56 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
 
             {/* Sponsors Bar */}
             {stats.sponsors.length > 0 && (
-                <section className="bg-gradient-to-r from-rose-50/50 to-orange-50/50 border border-rose-100 rounded-2xl p-6 shadow-sm overflow-hidden relative">
-                    <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-rose-50 rounded-full blur-3xl opacity-50 pointer-events-none" />
+                <section className="bg-gradient-to-r from-amber-50/50 to-orange-50/50 border border-amber-100 rounded-2xl p-6 shadow-sm overflow-hidden relative">
+                    <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-amber-50 rounded-full blur-3xl opacity-50 pointer-events-none" />
                     <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between relative z-10">
                         <div className="flex items-center gap-4">
-                            <div className="bg-white p-3 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-center">
-                                <Heart className="h-6 w-6 text-rose-500 fill-rose-500/20" />
+                            <div className="bg-white p-3 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-center">
+                                <Crown className="h-6 w-6 text-amber-500 fill-amber-500/20" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-black text-rose-950 uppercase tracking-widest">Vinh danh đóng góp</h3>
-                                <p className="text-xs font-semibold text-rose-700/60 mt-0.5">Những thành viên đã ủng hộ thêm cho nhóm</p>
+                                <h3 className="text-sm font-black text-amber-950 uppercase tracking-widest">Vinh danh đóng góp</h3>
+                                <p className="text-xs font-semibold text-amber-700/60 mt-0.5">Những thành viên đã ủng hộ thêm cho nhóm</p>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-4">
                             {stats.sponsors.map((sponsor, idx) => (
-                                <div key={sponsor.id} className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl border border-rose-100/50 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
-                                    <div className="relative">
-                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                                            <AvatarFallback className="bg-rose-100 text-rose-700 text-xs font-bold">{getInitials(sponsor.name)}</AvatarFallback>
-                                        </Avatar>
-                                        {idx === 0 && (
-                                            <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-1 ring-amber-400/20" title="Top 1">
-                                                1
-                                            </div>
-                                        )}
-                                        {idx === 1 && (
-                                            <div className="absolute -top-2 -right-2 bg-slate-300 text-slate-800 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 2">
-                                                2
-                                            </div>
-                                        )}
-                                        {idx === 2 && (
-                                            <div className="absolute -top-2 -right-2 bg-amber-700 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 3">
-                                                3
-                                            </div>
-                                        )}
+                                <div key={sponsor.id} className="relative group/sponsor">
+                                    <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl border border-amber-100/50 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                                        <div className="relative">
+                                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                                                <AvatarFallback className="bg-amber-100 text-amber-700 text-xs font-bold">{getInitials(sponsor.name)}</AvatarFallback>
+                                            </Avatar>
+                                            {idx === 0 && (
+                                                <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-1 ring-amber-400/20" title="Top 1">
+                                                    1
+                                                </div>
+                                            )}
+                                            {idx === 1 && (
+                                                <div className="absolute -top-2 -right-2 bg-slate-300 text-slate-800 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 2">
+                                                    2
+                                                </div>
+                                            )}
+                                            {idx === 2 && (
+                                                <div className="absolute -top-2 -right-2 bg-amber-700 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 3">
+                                                    3
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-stone-900">{sponsor.name}</p>
+                                            <p className="text-xs text-amber-600 font-black">+<span className="font-mono tracking-tighter">{formatCurrency(stats.memberDonated[sponsor.id])}</span></p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-stone-900">{sponsor.name}</p>
-                                        <p className="text-xs text-rose-600 font-black">+<span className="font-mono tracking-tighter">{formatCurrency(stats.memberDonated[sponsor.id])}</span></p>
-                                    </div>
+                                    {!isReadOnly && (
+                                        <button
+                                            onClick={() => handleRemoveDonations(sponsor.id)}
+                                            className="absolute -top-2 -right-2 h-6 w-6 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover/sponsor:opacity-100 transition-opacity hover:bg-amber-600 z-20"
+                                            title="Xóa ủng hộ của người này"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -563,7 +656,7 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                         onClick={openAddDonationDialog}
                         className="border-stone-200 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
                     >
-                        <Heart className="h-4 w-4 mr-2" /> Ủng hộ
+                        <Crown className="h-4 w-4 mr-2" /> Ủng hộ
                     </Button>
                     <Button
                         variant="outline"
@@ -602,13 +695,13 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                 </TableHead>
                                 {items.map(item => (
                                     <TableHead key={item.id} className="min-w-[260px] border-l border-r border-b border-stone-200 p-0 align-top group/head transition-colors hover:bg-stone-50/50">
-                                        <div className="p-4 flex flex-row items-center justify-between gap-3 h-full ">
+                                        <div className="text-primary p-4 flex flex-row items-center justify-between gap-3 h-full ">
                                             <div className="relative flex-1">
                                                 <Input
                                                     value={item.name}
                                                     onChange={(e) => !isReadOnly && setItems(items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
                                                     readOnly={isReadOnly}
-                                                    className={`h-8 border border-transparent bg-transparent text-stone-900 placeholder:text-stone-400 font-black text-stone-800 px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
+                                                    className={`h-8 border border-transparent bg-transparent  placeholder:text-primary font-black text-primary px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
                                                     placeholder="Tên mục..."
                                                     title={!isReadOnly ? 'Nhấn để sửa tên' : undefined}
                                                 />
@@ -634,10 +727,10 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                                         }
                                                     }}
                                                     disabled={isReadOnly}
-                                                    className={`h-6 w-24 text-right font-mono text-stone-900 placeholder:text-stone-400 font-bold text-sm tracking-tighter p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default opacity-100 bg-transparent disabled:text-stone-900' : 'cursor-text '}`}
+                                                    className={`h-6 w-24 text-right font-mono text-primary placeholder:text-stone-400 font-bold text-sm tracking-tighter p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default opacity-100 bg-transparent disabled:text-stone-900' : 'cursor-text '}`}
                                                     title={!isReadOnly ? 'Nhấn để sửa số tiền' : undefined}
                                                 />
-                                                <span className="text-[10px] font-black text-indigo-400">₫</span>
+                                                <span className="text-[10px] font-black text-primary">VND</span>
                                             </div>
                                         </div>
                                     </TableHead>
@@ -660,17 +753,40 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                     >
                                         <TableCell className={`p-4 border-r border-b border-stone-200 sticky left-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-bl-xl border-b-0' : ''}`}>
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8 border border-stone-200">
-                                                    <AvatarFallback className="text-[10px] font-bold bg-stone-50 hover:bg-stone-100 text-stone-400">{getInitials(member.name)}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex-1">
+                                                <div className="relative">
+                                                    <Avatar className={`h-8 w-8 border transition-all ${stats.memberDonated[member.id] > 0 ? 'border-amber-300 ring-2 ring-amber-50/50' : 'border-stone-200'}`}>
+                                                        <AvatarFallback className={`text-[10px] font-bold transition-colors ${stats.memberDonated[member.id] > 0 ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 hover:bg-stone-100 text-stone-400'}`}>
+                                                            {getInitials(member.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    {stats.memberDonated[member.id] > 0 && (
+                                                        <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-sm ring-2 ring-white">
+                                                            <Crown className="h-2 w-2 fill-current" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 flex items-center gap-2">
                                                     <Input
                                                         value={member.name}
                                                         onChange={(e) => !isReadOnly && updateMemberName(member.id, e.target.value)}
                                                         readOnly={isReadOnly}
-                                                        className={`h-8 border border-transparent bg-transparent text-stone-900 placeholder:text-stone-400 font-bold text-stone-800 px-2 -ml-2 text-sm focus-visible:ring-indigo-100 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
+                                                        className={`h-8 border border-transparent bg-transparent text-stone-900 placeholder:text-stone-400 font-bold px-2 -ml-2 text-sm focus-visible:ring-indigo-100 transition-all ${stats.memberDonated[member.id] > 0 ? 'text-amber-900' : 'text-stone-800'} ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
                                                         title={!isReadOnly ? 'Nhấn để sửa tên' : undefined}
                                                     />
+                                                    {stats.memberDonated[member.id] > 0 && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="cursor-help shrink-0">
+                                                                        <Crown className="h-3 w-3 text-amber-500 fill-amber-500 animate-pulse" />
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="right">
+                                                                    <p className="text-[10px] font-bold">Người ủng hộ quỹ</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -705,9 +821,44 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                         })}
                                         <TableCell className={`text-center sticky right-[120px] z-10 border-l border-b border-stone-200 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'border-b-0' : ''}`}>
                                             <div className="flex flex-col items-center">
-                                                <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200">
-                                                    <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
-                                                </p>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="cursor-help">
+                                                                <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200">
+                                                                    <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                                </p>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        {stats.reductionRatio < 1 && (
+                                                            <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
+                                                                <div className="space-y-2">
+                                                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Chi tiết tính toán (Giảm {Math.round((1 - stats.reductionRatio) * 100)}%)</p>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <div className="flex justify-between items-center gap-4 text-xs font-medium">
+                                                                            <span className="text-stone-500">Tiền các món tham gia:</span>
+                                                                            <span className="font-mono">{formatCurrency(Object.values(stats.itemSplits).reduce((acc, split, idx) => {
+                                                                                const itemId = items[idx]?.id;
+                                                                                return participation[member.id]?.[itemId] ? acc + split : acc;
+                                                                            }, 0))}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center gap-4 text-xs font-medium border-b border-stone-100 pb-1">
+                                                                            <span className="text-stone-500">Số tiền được giảm trừ:</span>
+                                                                            <span className="text-indigo-500 font-mono">-{formatCurrency(Object.values(stats.itemSplits).reduce((acc, split, idx) => {
+                                                                                const itemId = items[idx]?.id;
+                                                                                return participation[member.id]?.[itemId] ? acc + split : acc;
+                                                                            }, 0) * (1 - stats.reductionRatio))}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center gap-4 text-sm font-black pt-1">
+                                                                            <span className="text-stone-900">Cần đóng:</span>
+                                                                            <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
                                         </TableCell>
                                         <TableCell className={`p-0 border-l border-b border-stone-200 sticky right-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-br-xl border-b-0' : ''}`}>
@@ -857,7 +1008,7 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            <Heart className="h-5 w-5 text-rose-500" /> Ủng hộ
+                            <Crown className="h-5 w-5 text-amber-500" /> Ủng hộ
                         </DialogTitle>
                         <DialogDescription className="text-stone-500 text-sm">
                             Ghi nhận khoản tiền một thành viên đã đóng góp vào quỹ chung.
@@ -868,7 +1019,9 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                             <Label className="text-xs font-bold text-stone-300 uppercase">Người ủng hộ</Label>
                             <Select value={newDonationMemberId} onValueChange={(val) => setNewDonationMemberId(val || "")}>
                                 <SelectTrigger className="w-full rounded-lg border-stone-200 h-10 px-3 font-semibold text-stone-700">
-                                    <SelectValue placeholder="Chọn người ủng hộ..." />
+                                    <SelectValue placeholder="Chọn người ủng hộ...">
+                                        {members.find(m => m.id === newDonationMemberId)?.name}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="border-stone-200">
                                     {members.map(member => (

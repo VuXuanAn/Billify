@@ -4,17 +4,46 @@ import React, { useState, useEffect } from "react";
 import { BillTable } from "@/components/BillTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye } from "lucide-react";
+import { Eye, Save, Loader2, Check, AlertCircle } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useBillStore } from "@/store/useBillStore";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { billService } from "@/lib/services/billService";
 
 export default function GroupPage() {
   const { id } = useParams();
+  const groupId = typeof id === "string" ? id : "";
+
   const { step, setStep, groupName, setGroupName, setupMembers, setSetupMembers, currentData, setCurrentData } = useBillStore();
   const [newMemberName, setNewMemberName] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // Load data from Supabase if exists
+  useEffect(() => {
+    async function loadData() {
+      if (!groupId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const data = await billService.getBill(groupId);
+        if (data) {
+          setCurrentData(data);
+          setGroupName(data.groupName);
+          setSetupMembers(data.members.map(m => m.name));
+          setStep("editor");
+        }
+      } catch (error) {
+        console.error("Failed to load bill data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [groupId, setCurrentData, setGroupName, setSetupMembers, setStep]);
 
   // If we arrived here and the store says landing, automatically set step to setup
   useEffect(() => {
@@ -23,13 +52,36 @@ export default function GroupPage() {
     }
   }, [step, setStep]);
 
+  const handleSave = async () => {
+    if (!groupId || !currentData) return;
+    setSaveStatus("saving");
+    try {
+      await billService.saveBill(groupId, currentData);
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (error) {
+      console.error("Save failed:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 5000);
+    }
+  };
+
   const handleGoToView = () => {
     if (!currentData) {
       alert("Đang chuẩn bị dữ liệu, vui lòng thử lại sau!");
       return;
     }
-    router.push(`/view`);
+    router.push(`/${groupId}/view`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans">
+        <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+        <p className="mt-4 text-stone-500 font-medium">Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 selection:bg-blue-500/20">
@@ -137,23 +189,45 @@ export default function GroupPage() {
         {step === "editor" && (
           <main className="flex-1 max-w-screen-2xl mx-auto w-full p-6 py-12 space-y-8">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-black text-stone-900 tracking-tight">{groupName || "Hóa đơn"}</h1>
-                <p className="text-sm text-stone-500 font-medium">Quản lý và chia sẻ chi tiêu của nhóm</p>
+              <div className="flex-1 max-w-2xl">
+                <Input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Hóa đơn..."
+                  className="text-2xl font-black text-stone-900 tracking-tight h-auto p-0 border-none bg-transparent focus-visible:ring-0 placeholder:text-stone-300 transition-all hover:bg-stone-100/50 rounded px-2 -ml-2"
+                />
+                <p className="text-sm text-stone-500 font-medium px-2 -ml-2">Quản lý và chia sẻ chi tiêu của nhóm</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
+                
                 <Button
-                  variant="outline"
-                  onClick={() => setStep("setup")}
-                  className="font-bold border-stone-200 text-stone-700 bg-white hover:bg-stone-50 h-10 px-4"
+                  onClick={handleSave}
+                  disabled={saveStatus === "saving"}
+                  className={`font-bold rounded-lg h-10 px-6 flex items-center gap-2 shadow-sm transition-all ${
+                    saveStatus === "success" 
+                      ? "bg-green-600 hover:bg-green-700 text-white" 
+                      : saveStatus === "error"
+                      ? "bg-red-600 hover:bg-red-700 text-white"
+                      : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-50"
+                  }`}
                 >
-                  Đổi tên
+                  {saveStatus === "saving" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : saveStatus === "success" ? (
+                    <Check className="h-4 w-4" />
+                  ) : saveStatus === "error" ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {saveStatus === "saving" ? "Đang lưu..." : saveStatus === "success" ? "Đã lưu!" : saveStatus === "error" ? "Lỗi!" : "Lưu"}
                 </Button>
+
                 <Button
                   onClick={handleGoToView}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg h-10 px-6 flex items-center gap-2 shadow-sm"
                 >
-                  <Eye className="h-4 w-4" /> Xuất bản & Chia sẻ
+                  <Eye className="h-4 w-4" /> Xem bản in & Chia sẻ
                 </Button>
               </div>
             </div>

@@ -43,17 +43,10 @@ export function Header() {
         </div>
         <div className="flex gap-4">
           <Button
-            variant="ghost"
-            className="text-stone-500 hover:text-stone-900 font-medium hidden sm:flex"
-          >
-            Tài liệu
-          </Button>
-          <Button
-            variant="outline"
             onClick={handleOpenBill}
-            className="font-bold border-stone-200 text-stone-700 bg-white hover:bg-stone-50"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-6 shadow-sm"
           >
-            Mở hóa đơn
+            Bắt đầu ngay
           </Button>
         </div>
       </div>

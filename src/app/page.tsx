@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { Eye, Save, Loader2, Check, AlertCircle, Activity, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useBillStore } from "@/store/useBillStore";
@@ -87,6 +88,47 @@ export default function Home() {
             </div>
           </div>
         </main>
+ 
+        <section className="w-full bg-stone-50 border-t border-stone-200 py-24 relative overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl pointer-events-none -translate-y-1/2"></div>
+          <div className="max-w-screen-2xl mx-auto px-6 relative z-10">
+            <div className="text-center space-y-4 mb-20">
+              <h2 className="text-sm font-black text-blue-600 uppercase tracking-[0.3em]">Tại sao chọn Billify?</h2>
+              <p className="text-4xl md:text-5xl font-black text-stone-900 tracking-tight leading-tight">Mọi thứ bạn cần cho <br className="hidden md:block" /> việc quản lý tài chính nhóm.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { 
+                  icon: <Activity className="h-8 w-8 text-blue-600" />, 
+                  title: "Chia tiền công bằng", 
+                  desc: "Tự động tính toán chi phí chính xác đến từng xu cho mỗi thành viên dựa trên những gì họ thực sự tham gia.",
+                  color: "bg-blue-100/50"
+                },
+                { 
+                  icon: <Crown className="h-8 w-8 text-amber-500" />, 
+                  title: "Vinh danh ủng hộ", 
+                  desc: "Cho phép thành viên ủng hộ thêm vào quỹ chung, tự động khấu trừ giảm tiền cho cả nhóm một cách sòng phẳng.",
+                  color: "bg-amber-100/50"
+                },
+                { 
+                  icon: <div className="text-3xl font-black text-indigo-600">QR</div>, 
+                  title: "Thanh toán 1-chạm", 
+                  desc: "Tích hợp mã QR VietQR tự động giúp bạn nhận tiền nhanh chóng mà không cần sao chép số tài khoản.",
+                  color: "bg-indigo-100/50"
+                },
+              ].map((feature, idx) => (
+                <div key={idx} className="bg-white border border-stone-200 p-10 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 group">
+                  <div className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mb-8 border border-white shadow-sm transition-transform group-hover:scale-110`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-2xl font-black text-stone-900 mb-4 tracking-tight">{feature.title}</h3>
+                  <p className="text-stone-500 font-medium leading-relaxed">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className="w-full bg-white py-24 border-t border-stone-200">
           <div className="max-w-4xl mx-auto px-6 space-y-12">
