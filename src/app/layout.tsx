@@ -12,7 +12,20 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
   title: "Billify - Chia Tiền Sòng Phẳng",
-  description: "Ứng dụng chia hóa đơn chuyên nghiệp và sòng phẳng",
+  description: "Ứng dụng chia hóa đơn chuyên nghiệp, sòng phẳng và minh bạch cho nhóm của bạn.",
+  keywords: ["chia tiền", "billify", "hóa đơn", "quản lý chi tiêu", "nhóm"],
+  openGraph: {
+    title: "Billify - Chia Tiền Sòng Phẳng",
+    description: "Ứng dụng chia hóa đơn chuyên nghiệp và sòng phẳng",
+    type: "website",
+    locale: "vi_VN",
+    siteName: "Billify",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Billify - Chia Tiền Sòng Phẳng",
+    description: "Ứng dụng chia hóa đơn chuyên nghiệp và sòng phẳng",
+  },
 };
 
 export default function RootLayout({

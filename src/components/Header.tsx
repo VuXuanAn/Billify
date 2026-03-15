@@ -32,19 +32,19 @@ export function Header() {
 
   return (
     <header className="w-full bg-white border-b border-stone-200 sticky top-0 z-50">
-      <div className="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         <div onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
             <span className="text-white font-black text-lg">B</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight text-stone-900">
+          <h1 className="text-lg sm:text-xl font-black tracking-tight text-stone-900">
             Billify
           </h1>
         </div>
         <div className="flex gap-4">
           <Button
             onClick={handleOpenBill}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-6 shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 sm:h-10 px-4 sm:px-6 text-sm sm:text-base shadow-sm"
           >
             Bắt đầu ngay
           </Button>
