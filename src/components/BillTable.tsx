@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useMemo, useRef } from "react";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import jsQR from "jsqr";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
     Table,
@@ -75,11 +76,13 @@ import {
     Loader2,
     AlertCircle,
     Save,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Download
 } from "lucide-react";
 import CurrencyInput from 'react-currency-input-field';
 import { IMaskInput } from "react-imask";
 import { VIETNAMESE_BANKS } from "@/lib/constants/banks";
+import { billService } from "@/lib/services/billService";
 
 interface Member {
     id: string;
@@ -111,12 +114,13 @@ interface BillTableData {
 }
 
 interface BillTableProps {
+    groupId?: string;
     initialData?: BillTableData;
     isReadOnly?: boolean;
     onDataChange?: (data: BillTableData) => void;
 }
 
-export function BillTable({ initialData, isReadOnly, onDataChange }: BillTableProps) {
+export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: BillTableProps) {
     const [groupName, setGroupName] = useState(initialData?.groupName || "Chuyến đi tuyệt vời");
     const [paymentBank, setPaymentBank] = useState(initialData?.paymentBank || "");
     const [paymentAccount, setPaymentAccount] = useState(initialData?.paymentAccount || "");
@@ -132,11 +136,21 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
         initialData?.participation || { m1: { i1: true } }
     );
     const [paymentStatus, setPaymentStatus] = useState<Record<string, boolean>>(initialData?.paymentStatus || {});
+    const [paymentMethod, setPaymentMethod] = useState<'manual' | 'qr'>(initialData?.paymentQR ? 'qr' : 'manual');
+    const [isQRZoomOpen, setIsQRZoomOpen] = useState(false);
+
+    const lastDataRef = useRef<string>("");
 
     // Sync external data changes if needed
     React.useEffect(() => {
         if (!isReadOnly && onDataChange) {
-            onDataChange({ groupName, paymentBank, paymentAccount, paymentQR, members, items, donations, participation, paymentStatus });
+            const currentDataObj = { groupName, paymentBank, paymentAccount, paymentQR, members, items, donations, participation, paymentStatus };
+            const dataString = JSON.stringify(currentDataObj);
+            
+            if (dataString !== lastDataRef.current) {
+                lastDataRef.current = dataString;
+                onDataChange(currentDataObj);
+            }
         }
     }, [groupName, paymentBank, paymentAccount, paymentQR, members, items, donations, participation, paymentStatus, onDataChange, isReadOnly]);
 
@@ -164,35 +178,48 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
 
     function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
         if (e.target.files && e.target.files.length > 0) {
-            setCrop(undefined); // Makes crop preview update between images.
-            const reader = new FileReader();
-            reader.addEventListener('load', () =>
-                setImgSrc(reader.result?.toString() || '')
-            );
-            reader.readAsDataURL(e.target.files[0]);
+            console.log("File selected:", e.target.files[0].name);
+            
+            // Clean up old object URL if any
+            if (imgSrc && imgSrc.startsWith('blob:')) {
+                URL.revokeObjectURL(imgSrc);
+            }
+
+            const url = URL.createObjectURL(e.target.files[0]);
+            setImgSrc(url);
+            setCrop({
+                unit: '%',
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100
+            });
             setIsCropperOpen(true);
-            e.target.value = ''; // Reset input so same file can be selected again
+            e.target.value = ''; 
         }
     }
 
     function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+        console.log("Image loaded into preview");
         const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
-
-        const crop = centerCrop(
+        
+        const initialCrop = centerCrop(
             makeAspectCrop(
                 {
                     unit: '%',
                     width: 90,
                 },
-                1, // 1:1 aspect ratio for QR codes
+                1,
                 width,
                 height
             ),
             width,
             height
         );
-        setCrop(crop);
+        setCrop(initialCrop);
     }
+
+    const [isUploadingQR, setIsUploadingQR] = useState(false);
 
     async function handleCropComplete() {
         if (!imgRef.current || !crop) {
@@ -204,7 +231,6 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
         const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
         const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
 
-        // Target 300x300 max to keep base64 tiny
         const targetSize = 250;
         canvas.width = targetSize;
         canvas.height = targetSize;
@@ -212,23 +238,66 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
 
         if (!ctx) return;
 
-        // Draw the cropped image onto the tiny canvas
         ctx.drawImage(
             imgRef.current,
-            crop.x * scaleX,
-            crop.y * scaleY,
-            crop.width * scaleX,
-            crop.height * scaleY,
+            (crop.x || 0) * scaleX,
+            (crop.y || 0) * scaleY,
+            (crop.width || 0) * scaleX,
+            (crop.height || 0) * scaleY,
             0,
             0,
             targetSize,
             targetSize
         );
 
-        // Compress heavily to keep the share URL tiny, QR codes survive jpeg compression surprisingly well
-        const base64Image = canvas.toDataURL('image/jpeg', 0.6);
-        setPaymentQR(base64Image);
-        setIsCropperOpen(false);
+        // QR Code Detection
+        const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (!code) {
+            toast.warning("Không tìm thấy mã QR", {
+                description: "Vùng đã cắt có vẻ không chứa mã QR hợp lệ. Bạn có muốn tiếp tục tải lên không?",
+                action: {
+                    label: "Tiếp tục",
+                    onClick: () => proceedWithUpload(canvas)
+                },
+                cancel: {
+                    label: "Hủy"
+                }
+            });
+            return;
+        } else {
+            console.log("QR Code detected:", code.data);
+            proceedWithUpload(canvas);
+        }
+    }
+
+    async function proceedWithUpload(canvas: HTMLCanvasElement) {
+        setIsUploadingQR(true);
+        try {
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                canvas.toBlob((b) => {
+                    if (b) resolve(b);
+                    else reject(new Error("Canvas to Blob conversion failed"));
+                }, 'image/jpeg', 0.8);
+            });
+
+            const billId = groupId || initialData?.groupName || 'temp';
+            const publicUrl = await billService.uploadQR(billId, blob);
+            setPaymentQR(publicUrl);
+            
+            // Cleanup
+            if (imgSrc && imgSrc.startsWith('blob:')) {
+                URL.revokeObjectURL(imgSrc);
+                setImgSrc("");
+            }
+        } catch (error) {
+            console.error("Failed to upload QR:", error);
+            alert("Không thể tải lên mã QR. Vui lòng thử lại.");
+        } finally {
+            setIsUploadingQR(false);
+            setIsCropperOpen(false);
+        }
     }
 
     // Copy state
@@ -242,6 +311,25 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
             setTimeout(() => setCopiedAccount(false), 2000);
         } catch (err) {
             console.error('Failed to copy text: ', err);
+        }
+    };
+
+    const handleDownloadQR = async () => {
+        if (!paymentQR) return;
+        try {
+            const response = await fetch(paymentQR);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `qr-${groupId || 'code'}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download failed:', err);
+            alert("Không thể tải xuống mã QR. Vui lòng thử lại.");
         }
     };
 
@@ -413,151 +501,254 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                         </div>
                     </div>
 
-                    {/* Payment Information Inputs */}
-                    <div className="flex flex-wrap items-center gap-4 pt-2">
-                        <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all">
-                            <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
-                            {isReadOnly ? (
-                                <span className="text-sm font-bold text-stone-700">{paymentBank || "---"}</span>
-                            ) : (
-                                <Popover open={openBankDropdown} onOpenChange={setOpenBankDropdown}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            role="combobox"
-                                            aria-expanded={openBankDropdown}
-                                            className="h-8 justify-between px-0 font-bold text-sm text-stone-700 hover:bg-transparent min-w-[150px] shadow-none"
-                                        >
-                                            <span className="truncate">
-                                                {paymentBank
-                                                    ? VIETNAMESE_BANKS.find((bank) => bank.name === paymentBank)?.name || paymentBank
-                                                    : "Chọn ngân hàng..."}
-                                            </span>
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0" align="start">
-                                        <Command>
-                                            <CommandInput placeholder="Tìm ngân hàng..." className="h-9" />
-                                            <CommandList>
-                                                <CommandEmpty>Không tìm thấy ngân hàng.</CommandEmpty>
-                                                <CommandGroup>
-                                                    <ScrollArea className="h-64">
-                                                        {VIETNAMESE_BANKS.map((bank) => (
-                                                            <CommandItem
-                                                                key={bank.id}
-                                                                value={`${bank.name} ${bank.fullName}`}
-                                                                onSelect={() => {
-                                                                    setPaymentBank(bank.name);
-                                                                    setOpenBankDropdown(false);
-                                                                }}
-                                                                className="cursor-pointer"
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        paymentBank === bank.name ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-bold">{bank.name}</span>
-                                                                    <span className="text-[10px] text-stone-500 truncate max-w-[220px]">{bank.fullName}</span>
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </ScrollArea>
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all group">
-                            <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
-                            <Input
-                                value={paymentAccount}
-                                onChange={(e) => !isReadOnly && setPaymentAccount(e.target.value)}
-                                readOnly={isReadOnly}
-                                className="border-none bg-transparent text-stone-900 placeholder:text-stone-400 h-8 p-0 text-sm font-bold text-stone-700 focus-visible:ring-0 min-w-[150px] placeholder:text-stone-700 flex-1"
-                                placeholder="Số tài khoản..."
-                            />
-                            {paymentAccount && (
-                                <button
-                                    onClick={handleCopyAccount}
-                                    title="Copy số tài khoản"
-                                    className={`p-1.5 rounded-md transition-all flex items-center justify-center shrink-0 ${copiedAccount ? 'bg-indigo-100 text-indigo-600' : 'bg-stone-50 hover:bg-stone-100 text-stone-500 hover:text-stone-700 border border-stone-200'} ${isReadOnly ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
-                                >
-                                    {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                </button>
-                            )}
-                        </div>
+                    {/* Payment Information Section */}
+                    <div className="flex flex-col gap-6 pt-2">
+                        {/* Method Toggle */}
                         {!isReadOnly && (
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    ref={fileInputRef}
-                                    onChange={onSelectFile}
-                                    className="hidden"
-                                />
-                                {paymentQR ? (
-                                    <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 h-12 shadow-sm">
-                                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap">Đã tải mã QR ✔</span>
-                                        <button
-                                            onClick={() => setPaymentQR("")}
-                                            className="text-indigo-400 hover:text-red-500 ml-1 p-1"
-                                            title="Xóa mã QR"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="h-12 border-stone-200 text-stone-700 bg-white hover:bg-stone-50 rounded-xl shadow-sm px-4"
-                                    >
-                                        <UploadCloud className="h-4 w-4 mr-2 text-stone-400" />
-                                        <span className="text-xs font-bold whitespace-nowrap">Tải mã QR</span>
-                                    </Button>
-                                )}
+                            <div className="flex bg-stone-100 p-1 rounded-xl w-fit border border-stone-200/50">
+                                <button
+                                    onClick={() => {
+                                        setPaymentMethod('manual');
+                                        setPaymentQR("");
+                                    }}
+                                    className={cn(
+                                        "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                                        paymentMethod === 'manual' 
+                                            ? "bg-white text-indigo-600 shadow-sm" 
+                                            : "text-stone-500 hover:text-stone-700"
+                                    )}
+                                >
+                                    Chuyển khoản
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setPaymentMethod('qr');
+                                        setPaymentBank("");
+                                        setPaymentAccount("");
+                                    }}
+                                    className={cn(
+                                        "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                                        paymentMethod === 'qr' 
+                                            ? "bg-white text-indigo-600 shadow-sm" 
+                                            : "text-stone-500 hover:text-stone-700"
+                                    )}
+                                >
+                                    Mã QR
+                                </button>
                             </div>
                         )}
-                        {/* Prominent QR Code Display for View Mode */}
-                        {isReadOnly && paymentQR && (
-                            <div className="w-full mt-6 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
-                                <div className="bg-white p-2 rounded-xl shadow-sm border border-stone-200 shrink-0">
-                                    <img src={paymentQR} alt="QR Code Thanh Toán" className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg" />
-                                </div>
-                                <div className="flex-1 text-center sm:text-left">
-                                    <h3 className="text-lg font-black text-indigo-950">Quét mã để thanh toán</h3>
-                                    <p className="text-sm font-semibold text-indigo-700/60 mt-1">Sử dụng ứng dụng ngân hàng của bạn để quét mã QR này và chuyển khoản nhanh chóng.</p>
 
-                                    <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
-                                        {paymentBank && (
-                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm">
-                                                <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Ngân hàng</span>
-                                                {paymentBank}
-                                            </span>
-                                        )}
-                                        {paymentAccount && (
-                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm ml-0">
-                                                <span className="text-[10px] text-indigo-400 uppercase tracking-widest">STK</span>
-                                                {paymentAccount}
-                                                <button
-                                                    onClick={handleCopyAccount}
-                                                    title="Copy số tài khoản"
-                                                    className={`ml-1 flex items-center justify-center p-1 rounded transition-colors ${copiedAccount ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600'}`}
+                        <div className="flex flex-wrap items-center gap-4">
+                            {/* Manual Entry Mode */}
+                            {!isReadOnly && paymentMethod === 'manual' && (
+                                <>
+                                    <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all">
+                                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
+                                        <Popover open={openBankDropdown} onOpenChange={setOpenBankDropdown}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    role="combobox"
+                                                    aria-expanded={openBankDropdown}
+                                                    className="h-8 justify-between px-0 font-bold text-sm text-stone-700 hover:bg-transparent min-w-[150px] shadow-none"
                                                 >
-                                                    {copiedAccount ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                                </button>
-                                            </span>
+                                                    <span className="truncate">
+                                                        {paymentBank
+                                                            ? VIETNAMESE_BANKS.find((bank) => bank.name === paymentBank)?.name || paymentBank
+                                                            : "Chọn ngân hàng..."}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Tìm ngân hàng..." className="h-9" />
+                                                    <CommandList>
+                                                        <CommandEmpty>Không tìm thấy ngân hàng.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            <ScrollArea className="h-64">
+                                                                {VIETNAMESE_BANKS.map((bank) => (
+                                                                    <CommandItem
+                                                                        key={bank.id}
+                                                                        value={`${bank.name} ${bank.fullName}`}
+                                                                        onSelect={() => {
+                                                                            setPaymentBank(bank.name);
+                                                                            setOpenBankDropdown(false);
+                                                                        }}
+                                                                        className="cursor-pointer"
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                paymentBank === bank.name ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-bold">{bank.name}</span>
+                                                                            <span className="text-[10px] text-stone-500 truncate max-w-[220px]">{bank.fullName}</span>
+                                                                        </div>
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </ScrollArea>
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all group">
+                                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
+                                        <Input
+                                            value={paymentAccount}
+                                            onChange={(e) => setPaymentAccount(e.target.value)}
+                                            className="border-none bg-transparent text-stone-900 placeholder:text-stone-400 h-8 p-0 text-sm font-bold focus-visible:ring-0 min-w-[150px] placeholder:text-stone-300 flex-1"
+                                            placeholder="Số tài khoản..."
+                                        />
+                                        {paymentAccount && (
+                                            <button
+                                                onClick={handleCopyAccount}
+                                                className="p-1.5 bg-stone-50 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 transition-all"
+                                            >
+                                                {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                            </button>
                                         )}
                                     </div>
+                                </>
+                            )}
+
+                            {/* QR Mode Entry */}
+                            {!isReadOnly && paymentMethod === 'qr' && (
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="file"
+                                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                                        ref={fileInputRef}
+                                        onChange={onSelectFile}
+                                        className="hidden"
+                                    />
+                                    {paymentQR ? (
+                                        <div className="group relative w-32 h-32 rounded-2xl overflow-hidden border border-stone-200 shadow-sm animate-in zoom-in duration-300">
+                                            <img src={paymentQR} alt="QR Preview" className="h-full w-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={handleDownloadQR}
+                                                        className="p-2 bg-white rounded-full text-indigo-600 hover:scale-110 transition-transform"
+                                                        title="Tải mã QR"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setPaymentQR("")}
+                                                        className="p-2 bg-white rounded-full text-red-600 hover:scale-110 transition-transform"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                                <span className="text-[10px] font-black text-white uppercase tracking-widest font-sans">Thay đổi</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploadingQR}
+                                            className="w-32 h-32 border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group text-stone-400"
+                                        >
+                                            {isUploadingQR ? (
+                                                <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                                            ) : (
+                                                <>
+                                                    <div className="p-3 bg-stone-50 rounded-xl group-hover:bg-white transition-colors">
+                                                        <Plus className="h-6 w-6" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest px-2 text-center">Tải lên mã QR</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {/* View Mode Display */}
+                            {isReadOnly && (
+                                <>
+                                    {/* Manual Display if no QR or user preferred manual */}
+                                    {!paymentQR && (paymentBank || paymentAccount) && (
+                                        <div className="flex flex-wrap items-center gap-4">
+                                            {paymentBank && (
+                                                <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm">
+                                                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
+                                                    <span className="text-sm font-bold text-stone-700">{paymentBank}</span>
+                                                </div>
+                                            )}
+                                            {paymentAccount && (
+                                                <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm group">
+                                                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
+                                                    <span className="text-sm font-bold text-stone-700">{paymentAccount}</span>
+                                                    <button
+                                                        onClick={handleCopyAccount}
+                                                        className="p-1.5 bg-stone-50 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* QR Display */}
+                                    {paymentQR && (
+                                        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
+                                            <div 
+                                                className="bg-white p-2 rounded-xl shadow-sm border border-stone-200 shrink-0 cursor-pointer group relative overflow-hidden"
+                                                onClick={() => setIsQRZoomOpen(true)}
+                                            >
+                                                <img src={paymentQR} alt="QR Code Thanh Toán" className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg transition-all duration-300 group-hover:scale-110" />
+                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Sparkles className="text-white h-8 w-8 animate-pulse" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 text-center sm:text-left">
+                                                <h3 className="text-lg font-black text-indigo-950">Quét mã để thanh toán</h3>
+                                                <p className="text-sm font-semibold text-indigo-700/60 mt-1">Sử dụng ứng dụng ngân hàng của bạn để quét mã QR này và chuyển khoản nhanh chóng.</p>
+
+                                                <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+                                                    {paymentBank && (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm">
+                                                            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Ngân hàng</span>
+                                                            {paymentBank}
+                                                        </span>
+                                                    )}
+                                                    {paymentAccount && (
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm ml-0">
+                                                            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">STK</span>
+                                                            {paymentAccount}
+                                                            <button
+                                                                onClick={handleCopyAccount}
+                                                                title="Copy số tài khoản"
+                                                                className={`ml-1 flex items-center justify-center p-1 rounded transition-colors ${copiedAccount ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600'}`}
+                                                            >
+                                                                {copiedAccount ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                                                            </button>
+                                                        </span>
+                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleDownloadQR}
+                                                        className="bg-white border-indigo-100 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 font-bold h-8 rounded-lg shadow-sm"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5 mr-1.5" /> Tải mã QR
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -776,10 +967,8 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                                     {stats.memberDonated[member.id] > 0 && (
                                                         <TooltipProvider>
                                                             <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className="cursor-help shrink-0">
-                                                                        <Crown className="h-3 w-3 text-amber-500 fill-amber-500 animate-pulse" />
-                                                                    </div>
+                                                                <TooltipTrigger render={<div className="cursor-help shrink-0" />}>
+                                                                    <Crown className="h-3 w-3 text-amber-500 fill-amber-500 animate-pulse" />
                                                                 </TooltipTrigger>
                                                                 <TooltipContent side="right">
                                                                     <p className="text-[10px] font-bold">Người ủng hộ quỹ</p>
@@ -823,40 +1012,52 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                                             <div className="flex flex-col items-center">
                                                 <TooltipProvider>
                                                     <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div className="cursor-help">
-                                                                <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200">
-                                                                    <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
-                                                                </p>
-                                                            </div>
+                                                        <TooltipTrigger render={<div className="cursor-help" />}>
+                                                            <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200">
+                                                                <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                            </p>
                                                         </TooltipTrigger>
-                                                        {stats.reductionRatio < 1 && (
-                                                            <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
-                                                                <div className="space-y-2">
-                                                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Chi tiết tính toán (Giảm {Math.round((1 - stats.reductionRatio) * 100)}%)</p>
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <div className="flex justify-between items-center gap-4 text-xs font-medium">
-                                                                            <span className="text-stone-500">Tiền các món tham gia:</span>
-                                                                            <span className="font-mono">{formatCurrency(Object.values(stats.itemSplits).reduce((acc, split, idx) => {
-                                                                                const itemId = items[idx]?.id;
-                                                                                return participation[member.id]?.[itemId] ? acc + split : acc;
-                                                                            }, 0))}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between items-center gap-4 text-xs font-medium border-b border-stone-100 pb-1">
-                                                                            <span className="text-stone-500">Số tiền được giảm trừ:</span>
-                                                                            <span className="text-indigo-500 font-mono">-{formatCurrency(Object.values(stats.itemSplits).reduce((acc, split, idx) => {
-                                                                                const itemId = items[idx]?.id;
-                                                                                return participation[member.id]?.[itemId] ? acc + split : acc;
-                                                                            }, 0) * (1 - stats.reductionRatio))}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between items-center gap-4 text-sm font-black pt-1">
-                                                                            <span className="text-stone-900">Cần đóng:</span>
-                                                                            <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
-                                                                        </div>
-                                                                    </div>
+                                                        <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
+                                                            <div className="space-y-3 min-w-[200px]">
+                                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Chi tiết tham gia</p>
+                                                                
+                                                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                                                    {items.map(item => {
+                                                                        if (!participation[member.id]?.[item.id]) return null;
+                                                                        return (
+                                                                            <div key={item.id} className="flex justify-between items-start gap-4 text-xs">
+                                                                                <span className="text-stone-600 font-medium line-clamp-1 flex-1">• {item.name}</span>
+                                                                                <span className="font-mono text-stone-900 shrink-0">{formatCurrency(stats.itemSplits[item.id])}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
-                                                            </TooltipContent>
-                                                        )}
+
+                                                                <div className="pt-2 border-t border-stone-100 space-y-2">
+                                                                    <div className="flex justify-between items-center gap-4 text-xs font-bold">
+                                                                        <span className="text-stone-500">Tổng món ăn:</span>
+                                                                        <span className="font-mono">{formatCurrency(items.reduce((acc, item) => 
+                                                                            participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
+                                                                        ))}</span>
+                                                                    </div>
+                                                                    
+                                                                    {stats.reductionRatio < 1 && (
+                                                                        <>
+                                                                            <div className="flex justify-between items-center gap-4 text-xs font-medium">
+                                                                                <span className="text-stone-500 italic">Chiết khấu ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
+                                                                                <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) => 
+                                                                                    participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
+                                                                                ) * (1 - stats.reductionRatio))}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center gap-4 text-sm font-black pt-1 border-t border-stone-100">
+                                                                                <span className="text-stone-900">Cần đóng:</span>
+                                                                                <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
                                             </div>
@@ -1004,6 +1205,7 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                 </DialogContent>
             </Dialog>
 
+
             <Dialog open={isDonationDialogOpen} onOpenChange={setIsDonationDialogOpen}>
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6">
                     <DialogHeader>
@@ -1061,6 +1263,112 @@ export function BillTable({ initialData, isReadOnly, onDataChange }: BillTablePr
                     <DialogFooter className="pt-4">
                         <Button onClick={handleAddDonation} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 font-bold rounded-lg h-10 transition-none">Xác nhận</Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* QR Cropper Dialog */}
+            <Dialog open={isCropperOpen} onOpenChange={setIsCropperOpen}>
+                <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6 bg-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Cắt mã QR</DialogTitle>
+                        <DialogDescription className="text-stone-500 text-sm">
+                            Điều chỉnh vùng chứa mã QR để ứng dụng nhận diện tốt hơn.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center p-2 bg-stone-50 rounded-xl border border-dashed border-stone-200 mt-4 overflow-auto max-h-[450px]">
+                        {imgSrc ? (
+                            <ReactCrop
+                                crop={crop}
+                                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                aspect={1}
+                                circularCrop={false}
+                                className="rounded-lg shadow-sm"
+                            >
+                                <img
+                                    ref={imgRef}
+                                    alt="Mã QR"
+                                    src={imgSrc}
+                                    onLoad={onImageLoad}
+                                    className="block w-full h-auto min-h-[100px] bg-white"
+                                    style={{ border: '1px solid #f1f1f1' }}
+                                />
+                            </ReactCrop>
+                        ) : (
+                            <div className="flex flex-col items-center gap-2 py-12">
+                                <Loader2 className="h-8 w-8 text-stone-300 animate-spin" />
+                                <p className="text-xs text-stone-400 font-bold">Đang tải hình ảnh...</p>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="flex flex-row gap-3 pt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCropperOpen(false)}
+                            className="flex-1 font-bold border-stone-200 h-10 rounded-lg hover:bg-stone-50"
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            onClick={handleCropComplete}
+                            disabled={isUploadingQR}
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10 rounded-lg shadow-sm"
+                        >
+                            {isUploadingQR ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Đang tải...
+                                </>
+                            ) : (
+                                "Hoàn tất & Tải lên"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* QR Zoom Dialog */}
+            <Dialog open={isQRZoomOpen} onOpenChange={setIsQRZoomOpen}>
+                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-transparent border-none shadow-none">
+                    <div className="relative group">
+                        <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition duration-1000"></div>
+                        <div className="relative bg-white p-6 rounded-3xl border border-white/20 shadow-2xl backdrop-blur-xl">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-black text-stone-900 tracking-tight">Mã QR Thanh toán</h2>
+                                        <p className="text-sm font-semibold text-stone-500 mt-1">Quét mã để hoàn tất thanh toán.</p>
+                                    </div>
+                                    <div className="p-3 bg-indigo-50 rounded-2xl">
+                                        <Sparkles className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                </div>
+
+                                <div className="aspect-square bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200 p-4 flex items-center justify-center">
+                                    <img 
+                                        src={paymentQR} 
+                                        alt="QR Zoom" 
+                                        className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button
+                                        onClick={handleDownloadQR}
+                                        className="bg-stone-900 hover:bg-stone-800 text-white font-bold h-12 rounded-xl shadow-lg transition-all"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" /> Tải xuống
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsQRZoomOpen(false)}
+                                        className="border-stone-200 text-stone-600 hover:bg-stone-50 font-bold h-12 rounded-xl"
+                                    >
+                                        Đóng
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

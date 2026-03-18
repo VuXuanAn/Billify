@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { BillTable } from "@/components/BillTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Save, Loader2, Check, AlertCircle } from "lucide-react";
+import { Eye, Save, Loader2, Check, AlertCircle, Trash2, Lock, Unlock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useRouter, useParams } from "next/navigation";
 import { useBillStore } from "@/store/useBillStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { billService } from "@/lib/services/billService";
@@ -15,26 +18,50 @@ export default function GroupPage() {
   const { id } = useParams();
   const groupId = typeof id === "string" ? id : "";
 
-  const { step, setStep, groupName, setGroupName, setupMembers, setSetupMembers, currentData, setCurrentData } = useBillStore();
-  const [newMemberName, setNewMemberName] = useState("");
+  const { groupName, setGroupName, setupMembers, setSetupMembers, currentData, setCurrentData } = useBillStore();
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [isLoading, setIsLoading] = useState(true);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [canEdit, setCanEdit] = useState(true);
+  const { user } = useAuthStore();
   const router = useRouter();
 
   // Load data from Supabase if exists
   useEffect(() => {
     async function loadData() {
-      if (!groupId) {
+      if (!groupId || groupId === "dashboard" || groupId === "register") {
         setIsLoading(false);
         return;
       }
       try {
         const data = await billService.getBill(groupId);
         if (data) {
-          setCurrentData(data);
           setGroupName(data.groupName);
-          setSetupMembers(data.members.map(m => m.name));
-          setStep("editor");
+          setIsPrivate(data.isPrivate || false);
+          setCurrentData(data);
+          
+          // Ownership Check
+          const isOwner = data.userId === user?.id;
+          const isPublic = !data.isPrivate;
+          setCanEdit(isPublic || isOwner);
+        } else {
+          // Data is null - check if we have it in the local store (newly created FE-only)
+          if (groupName && setupMembers.length > 0) {
+            // Initialize empty data for a brand new bill
+            const initialData = {
+              groupName: groupName,
+              members: setupMembers.map((name, idx) => ({ id: `m${idx + 1}`, name })),
+              items: [],
+              donations: [],
+              participation: {},
+              isPrivate: false
+            };
+            setCurrentData(initialData);
+            setCanEdit(true);
+          } else {
+            // Truly missing or restricted
+            setCanEdit(false);
+          }
         }
       } catch (error) {
         console.error("Failed to load bill data:", error);
@@ -43,20 +70,16 @@ export default function GroupPage() {
       }
     }
     loadData();
-  }, [groupId, setCurrentData, setGroupName, setSetupMembers, setStep]);
+  }, [groupId, setCurrentData, setGroupName, user?.id]);
 
-  // If we arrived here and the store says landing, automatically set step to setup
-  useEffect(() => {
-    if (step === "landing") {
-      setStep("setup");
-    }
-  }, [step, setStep]);
+
+
 
   const handleSave = async () => {
     if (!groupId || !currentData) return;
     setSaveStatus("saving");
     try {
-      await billService.saveBill(groupId, currentData);
+      await billService.saveBill(groupId, { ...currentData, isPrivate }, user?.id);
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
@@ -73,6 +96,10 @@ export default function GroupPage() {
     }
     router.push(`/${groupId}/view`);
   };
+  
+  const handleDataChange = useCallback((newData: any) => {
+    setCurrentData({ ...newData, isPrivate });
+  }, [isPrivate, setCurrentData]);
 
   if (isLoading) {
     return (
@@ -83,112 +110,48 @@ export default function GroupPage() {
     );
   }
 
+  if (!canEdit) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-6 bg-stone-50">
+          <div className="text-center space-y-6 max-w-md bg-white p-10 rounded-2xl border border-stone-200 shadow-sm transition-all hover:shadow-md">
+            <div className="mx-auto w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-2">
+              <Lock className="h-8 w-8 text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-stone-900">Truy cập bị từ chối</h1>
+              <p className="text-stone-500 font-medium leading-relaxed">
+                Hóa đơn này ở chế độ riêng tư. Bạn không có quyền chỉnh sửa nội dung này.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-3">
+              <Button 
+                onClick={handleGoToView} 
+                variant="outline"
+                className="w-full border-stone-200 text-stone-700 hover:bg-stone-50 font-bold h-12 rounded-lg"
+              >
+                <Eye className="mr-2 h-4 w-4" /> Xem bản in & Chia sẻ
+              </Button>
+              <Button 
+                onClick={() => router.push("/")} 
+                className="w-full bg-blue-600 text-white hover:bg-blue-700 font-bold h-12 rounded-lg shadow-sm"
+              >
+                Quay lại trang chủ
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900 selection:bg-blue-500/20">
       <Header />
-      <div className="flex-1 flex flex-col">
-        {(step === "setup" || step === "landing") && (
-          <main className="flex-1 flex flex-col items-center justify-center p-6 bg-stone-50 py-24">
-            <div className="w-full max-w-md bg-white border border-stone-200 shadow-sm p-10 rounded-2xl space-y-8">
-              <div className="space-y-3">
-                <h2 className="text-2xl font-black text-stone-900 tracking-tight">Tạo hóa đơn mới</h2>
-                <p className="text-sm text-stone-500 font-medium">Đặt tên cho chuyến đi hoặc sự kiện của bạn để bắt đầu theo dõi chi tiêu.</p>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Tên sự kiện</label>
-                  <Input
-                    autoFocus
-                    value={groupName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGroupName(e.target.value)}
-                    placeholder="Ví dụ: Du lịch Đà Lạt 2024..."
-                    className="h-12 text-base font-medium rounded-lg border-stone-300 bg-white focus-visible:ring-blue-500 placeholder:text-stone-400"
-                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === "Enter" && groupName) {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-3 pt-2">
-                  <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Thành viên tham gia</label>
-
-                  <div className="flex gap-2">
-                    <Input
-                      value={newMemberName}
-                      onChange={(e) => setNewMemberName(e.target.value)}
-                      placeholder="Thêm tên thành viên..."
-                      className="h-10 text-sm font-medium rounded-lg border-stone-300 focus-visible:ring-blue-500 placeholder:text-stone-400"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && newMemberName.trim()) {
-                          e.preventDefault();
-                          setSetupMembers([...setupMembers, newMemberName.trim()]);
-                          setNewMemberName("");
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      onClick={() => {
-                        if (newMemberName.trim()) {
-                          setSetupMembers([...setupMembers, newMemberName.trim()]);
-                          setNewMemberName("");
-                        }
-                      }}
-                      className="h-10 px-4 whitespace-nowrap font-bold"
-                    >
-                      Thêm
-                    </Button>
-                  </div>
-
-                  {setupMembers.length > 0 && (
-                    <div className="flex flex-wrap gap-4 py-2">
-                      {setupMembers.map((member, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1.5 w-14">
-                          <div className="relative">
-                            <div className="h-12 w-12 bg-blue-100 text-blue-700 border-2 border-white shadow-sm rounded-full flex items-center justify-center font-bold text-sm">
-                              {member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                            </div>
-                            <button
-                              onClick={() => setSetupMembers(setupMembers.filter((_, i) => i !== idx))}
-                              className="absolute -top-1 -right-1 bg-red-100 text-red-600 rounded-full h-5 w-5 flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors border-2 border-white"
-                              title="Xóa thành viên"
-                            >
-                              &times;
-                            </button>
-                          </div>
-                          <span className="text-[10px] font-bold text-stone-600 truncate w-full text-center">{member}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  disabled={!groupName || setupMembers.length === 0}
-                  onClick={() => setStep("editor")}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg h-12 text-base transition-colors"
-                >
-                  Tiếp tục
-                </Button>
-                <div className="pt-2 text-center">
-                  <button
-                    onClick={() => router.push("/")}
-                    className="text-stone-400 text-sm font-medium hover:text-stone-900 transition-colors"
-                  >
-                    Hủy bỏ
-                  </button>
-                </div>
-              </div>
-            </div>
-          </main>
-        )}
-
-        {step === "editor" && (
-          <main className="flex-1 max-w-screen-2xl mx-auto w-full p-6 py-12 space-y-8">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <main className="flex-1 max-w-screen-2xl mx-auto w-full p-6 py-12 space-y-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex-1 max-w-2xl">
                 <Input
                   value={groupName}
@@ -198,7 +161,27 @@ export default function GroupPage() {
                 />
                 <p className="text-sm text-stone-500 font-medium px-2 -ml-2">Quản lý và chia sẻ chi tiêu của nhóm</p>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {user && (
+                    <div className="flex items-center gap-2 mr-1 bg-white border border-stone-200 rounded-lg h-10 px-3 shadow-sm transition-all hover:border-blue-200">
+                        <Checkbox 
+                        id="isPrivate" 
+                        checked={isPrivate}
+                        onCheckedChange={(checked) => {
+                            const val = !!checked;
+                            setIsPrivate(val);
+                            if (currentData) {
+                                setCurrentData({ ...currentData, isPrivate: val });
+                            }
+                        }}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                        <Label htmlFor="isPrivate" className="text-xs font-bold text-stone-700 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                        {isPrivate ? <Lock size={12} className="text-amber-500" /> : <Unlock size={12} className="text-stone-400" />}
+                        Chế độ riêng tư
+                        </Label>
+                    </div>
+                )}
                 
                 <Button
                   onClick={handleSave}
@@ -229,25 +212,41 @@ export default function GroupPage() {
                 >
                   <Eye className="h-4 w-4" /> Xem bản in & Chia sẻ
                 </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    if (window.confirm("Bạn có chắc chắn muốn xóa hóa đơn này không?")) {
+                      try {
+                        await billService.deleteBill(groupId);
+                        router.push("/dashboard");
+                      } catch (error) {
+                        alert("Không thể xóa hóa đơn. Vui lòng thử lại.");
+                      }
+                    }
+                  }}
+                  className="text-stone-400 hover:text-red-600 hover:bg-red-50 font-bold rounded-lg h-10 px-3 flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
             <div className="bg-white border border-stone-200 shadow-sm rounded-xl overflow-hidden">
               <BillTable
+                groupId={groupId}
                 initialData={currentData || {
                   groupName: groupName,
-                  members: setupMembers.map((name, idx) => ({ id: `m${idx + 1}`, name })),
+                  members: [],
                   items: [],
                   donations: [],
                   participation: {}
                 }}
-                onDataChange={setCurrentData}
+                onDataChange={handleDataChange}
               />
             </div>
           </main>
-        )}
-      </div>
-      <Footer />
-    </div>
-  );
-}
+          <Footer />
+        </div>
+      );
+    }

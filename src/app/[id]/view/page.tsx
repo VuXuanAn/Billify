@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { BillTable } from "@/components/BillTable";
 import { Button } from "@/components/ui/button";
-import { Edit3, Share2, Loader2, Home } from "lucide-react";
+import { Edit3, Share2, Loader2, Home, Lock, Unlock, Download } from "lucide-react";
 import { billService } from "@/lib/services/billService";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -13,7 +13,7 @@ export default function DynamicViewPage() {
     const router = useRouter();
     const { id } = useParams();
     const groupId = typeof id === "string" ? id : "";
-    
+
     const [data, setData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -88,7 +88,19 @@ export default function DynamicViewPage() {
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-black text-stone-900 tracking-tight">{data.groupName || "Hóa đơn"}</h1>
-                            <p className="text-sm text-stone-500 font-medium">Hóa đơn công khai</p>
+                            <p className="text-sm text-stone-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                {data.isPrivate ? (
+                                    <>
+                                        <Lock size={12} className="text-amber-500 shrink-0" />
+                                        <span>Chế độ riêng tư</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Unlock size={12} className="text-stone-400 shrink-0" />
+                                        <span>Chế độ công khai</span>
+                                    </>
+                                )}
+                            </p>
                         </div>
                         <div className="flex gap-3">
                             <Button
@@ -106,6 +118,7 @@ export default function DynamicViewPage() {
                             </Button>
                         </div>
                     </div>
+
 
                     <div className="border border-stone-200 bg-white rounded-xl overflow-hidden shadow-sm">
                         <BillTable initialData={data} isReadOnly={true} />

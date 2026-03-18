@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Eye, Save, Loader2, Check, AlertCircle, Activity, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useBillStore } from "@/store/useBillStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { v4 as uuidv4 } from 'uuid'; // Fallback for environments lacking crypto.randomUUID
+import { billService } from "@/lib/services/billService";
 
 export default function Home() {
   const { setStep } = useBillStore();
@@ -19,14 +20,7 @@ export default function Home() {
   }, [setStep]);
 
   const handleStart = () => {
-    let id;
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      id = crypto.randomUUID();
-    } else {
-      id = uuidv4();
-    }
-    setStep("setup");
-    router.push(`/${id}`);
+    router.push("/new");
   };
 
   return (
