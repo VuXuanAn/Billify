@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, LayoutDashboard, LogIn } from "lucide-react";
+import { LogOut, User, LayoutDashboard, LogIn, FlaskConical } from "lucide-react";
 
 export function Header() {
   const { setStep } = useBillStore();
@@ -59,14 +59,17 @@ export function Header() {
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-stone-900 leading-none">
               Billify
             </h1>
-            <span className="text-[10px] font-black px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100 uppercase tracking-tighter">
-              Beta
-            </span>
+
           </div>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
 
-
+          <span className="text-[14px] py-1 flex gap-2 items-center font-black px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100  tracking-widest">
+            <FlaskConical />
+            <span>
+              Phiên bản thử nghiệm
+            </span>
+          </span>
           {!loading && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center justify-center h-9 w-9 rounded-full border border-stone-200 overflow-hidden hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">

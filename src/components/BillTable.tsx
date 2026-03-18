@@ -76,13 +76,19 @@ import {
     Loader2,
     AlertCircle,
     Save,
-    Image as ImageIcon,
-    Download
+    ImageIcon,
+    Download,
+    CreditCard,
+    Lock,
+    Unlock,
+    Eye,
+    QrCode
 } from "lucide-react";
 import CurrencyInput from 'react-currency-input-field';
 import { IMaskInput } from "react-imask";
 import { VIETNAMESE_BANKS } from "@/lib/constants/banks";
 import { billService } from "@/lib/services/billService";
+import { QRUploadArea } from "./QRUploadArea";
 
 interface Member {
     id: string;
@@ -118,9 +124,27 @@ interface BillTableProps {
     initialData?: BillTableData;
     isReadOnly?: boolean;
     onDataChange?: (data: BillTableData) => void;
+    // Action Props
+    isPrivate?: boolean;
+    setIsPrivate?: (val: boolean) => void;
+    saveStatus?: "idle" | "saving" | "success" | "error";
+    handleSave?: () => void;
+    handleGoToView?: () => void;
+    onDelete?: () => void;
 }
 
-export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: BillTableProps) {
+export function BillTable({
+    groupId,
+    initialData,
+    isReadOnly,
+    onDataChange,
+    isPrivate,
+    setIsPrivate,
+    saveStatus,
+    handleSave,
+    handleGoToView,
+    onDelete
+}: BillTableProps) {
     const [groupName, setGroupName] = useState(initialData?.groupName || "Chuyến đi tuyệt vời");
     const [paymentBank, setPaymentBank] = useState(initialData?.paymentBank || "");
     const [paymentAccount, setPaymentAccount] = useState(initialData?.paymentAccount || "");
@@ -136,7 +160,7 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
         initialData?.participation || { m1: { i1: true } }
     );
     const [paymentStatus, setPaymentStatus] = useState<Record<string, boolean>>(initialData?.paymentStatus || {});
-    const [paymentMethod, setPaymentMethod] = useState<'manual' | 'qr'>(initialData?.paymentQR ? 'qr' : 'manual');
+    const paymentMethod = 'qr';
     const [isQRZoomOpen, setIsQRZoomOpen] = useState(false);
 
     const lastDataRef = useRef<string>("");
@@ -146,7 +170,7 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
         if (!isReadOnly && onDataChange) {
             const currentDataObj = { groupName, paymentBank, paymentAccount, paymentQR, members, items, donations, participation, paymentStatus };
             const dataString = JSON.stringify(currentDataObj);
-            
+
             if (dataString !== lastDataRef.current) {
                 lastDataRef.current = dataString;
                 onDataChange(currentDataObj);
@@ -174,12 +198,11 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
     const [imgSrc, setImgSrc] = useState("");
     const imgRef = useRef<HTMLImageElement>(null);
     const [crop, setCrop] = useState<Crop>();
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
         if (e.target.files && e.target.files.length > 0) {
             console.log("File selected:", e.target.files[0].name);
-            
+
             // Clean up old object URL if any
             if (imgSrc && imgSrc.startsWith('blob:')) {
                 URL.revokeObjectURL(imgSrc);
@@ -195,14 +218,14 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                 height: 100
             });
             setIsCropperOpen(true);
-            e.target.value = ''; 
+            e.target.value = '';
         }
     }
 
     function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
         console.log("Image loaded into preview");
         const { naturalWidth: width, naturalHeight: height } = e.currentTarget;
-        
+
         const initialCrop = centerCrop(
             makeAspectCrop(
                 {
@@ -227,23 +250,53 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
             return;
         }
 
-        const canvas = document.createElement('canvas');
-        const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
-        const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+        // Helper for parsing EMVCo TLV (Tag-Length-Value)
+        const parseTLV = (data: string) => {
+            const tags: Record<string, string> = {};
+            try {
+                let offset = 0;
+                while (offset < data.length - 4) {
+                    const tag = data.substring(offset, offset + 2);
+                    const lenStr = data.substring(offset + 2, offset + 4);
+                    const len = parseInt(lenStr, 10);
+                    if (isNaN(len)) break;
+                    const val = data.substring(offset + 4, offset + 4 + len);
+                    tags[tag] = val;
+                    offset += 4 + len;
+                }
+            } catch (e) {
+                console.error("TLVs parsing failed:", e);
+            }
+            return tags;
+        };
 
-        const targetSize = 250;
+        const canvas = document.createElement('canvas');
+        const { naturalWidth, naturalHeight } = imgRef.current;
+
+        // Ensure we handle percentage-based crops correctly
+        const pixelX = (crop.x * naturalWidth) / 100;
+        const pixelY = (crop.y * naturalHeight) / 100;
+        const pixelWidth = (crop.width * naturalWidth) / 100;
+        const pixelHeight = (crop.height * naturalHeight) / 100;
+
+        // Use a slightly larger size for better QR detection accuracy
+        const targetSize = 400;
         canvas.width = targetSize;
         canvas.height = targetSize;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         if (!ctx) return;
 
+        // Fill background with white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, targetSize, targetSize);
+
         ctx.drawImage(
             imgRef.current,
-            (crop.x || 0) * scaleX,
-            (crop.y || 0) * scaleY,
-            (crop.width || 0) * scaleX,
-            (crop.height || 0) * scaleY,
+            pixelX,
+            pixelY,
+            pixelWidth,
+            pixelHeight,
             0,
             0,
             targetSize,
@@ -252,7 +305,9 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
 
         // QR Code Detection
         const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+        });
 
         if (!code) {
             toast.warning("Không tìm thấy mã QR", {
@@ -268,6 +323,60 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
             return;
         } else {
             console.log("QR Code detected:", code.data);
+
+            // VietQR / Bank QR processing
+            const isVietQR = code.data.startsWith("000201");
+            if (isVietQR) {
+                const rootTags = parseTLV(code.data);
+                const merchantInfo = rootTags["38"]; // Tag 38 is VietQR info
+
+                if (merchantInfo) {
+                    const subTags = parseTLV(merchantInfo);
+                    const paymentDetail = subTags["01"];
+
+                    if (paymentDetail) {
+                        const detailTags = parseTLV(paymentDetail);
+                        const bin = detailTags["00"]; // Bank Identification Number
+                        const account = detailTags["01"]; // Account Number
+
+                        if (account) {
+                            setPaymentAccount(account);
+
+                            // Map popular BINs to bank names
+                            const binMap: Record<string, string> = {
+                                "970436": "Vietcombank",
+                                "970415": "VietinBank",
+                                "970418": "BIDV",
+                                "970405": "Agribank",
+                                "970422": "MB Bank",
+                                "970432": "VPBank",
+                                "970407": "Techcombank",
+                                "970416": "ACB",
+                                "970423": "TPBank",
+                                "970403": "Sacombank",
+                                "970441": "VIB",
+                                "970437": "HDBank"
+                            };
+
+                            if (bin && binMap[bin]) {
+                                setPaymentBank(binMap[bin]);
+                                toast.success("Đã tự động điền thông tin ngân hàng!", {
+                                    description: `${binMap[bin]} - STK: ${account}`
+                                });
+                            } else {
+                                toast.success("Đã tìm thấy mã QR ngân hàng!", {
+                                    description: `STK: ${account}. Vui lòng chọn ngân hàng thủ công.`
+                                });
+                            }
+                        }
+                    }
+                }
+            } else {
+                toast.info("Tìm thấy mã QR", {
+                    description: "Đã tìm thấy mã QR, nhưng có vẻ không phải là VietQR chuẩn."
+                });
+            }
+
             proceedWithUpload(canvas);
         }
     }
@@ -285,7 +394,7 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
             const billId = groupId || initialData?.groupName || 'temp';
             const publicUrl = await billService.uploadQR(billId, blob);
             setPaymentQR(publicUrl);
-            
+
             // Cleanup
             if (imgSrc && imgSrc.startsWith('blob:')) {
                 URL.revokeObjectURL(imgSrc);
@@ -464,322 +573,160 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
     return (
         <div className="max-w-screen-2xl mx-auto py-12 px-6 space-y-12 text-stone-900 font-sans tracking-tight">
 
-            <div className="flex flex-col gap-8 pb-6 border-b border-stone-200">
-                <div className="space-y-6">
-                    {/* Title and Members info */}
-                    <div className="space-y-4">
-                        <div className="relative max-w-2xl">
-                            <Input
-                                value={groupName}
-                                onChange={(e) => !isReadOnly && setGroupName(e.target.value)}
-                                readOnly={isReadOnly}
-                                className={`text-5xl font-black tracking-tighter text-stone-900 h-auto p-0 border-none bg-transparent text-stone-900 placeholder:text-stone-400 focus-visible:ring-0 placeholder:text-stone-800 ${isReadOnly ? 'cursor-default' : ''}`}
-                                placeholder="Tên nhóm của bạn..."
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <div className="flex -space-x-1.5">
-                                <TooltipProvider>
-                                    {members.map(member => (
-                                        <Tooltip key={member.id}>
-                                            <TooltipTrigger type="button" className="cursor-default border-none p-0 bg-transparent outline-none">
-                                                <Avatar className="h-7 w-7 border-2 border-stone-200 shadow-sm block">
-                                                    <AvatarFallback className="bg-stone-50 hover:bg-stone-100 text-stone-400 font-bold text-[9px]">{getInitials(member.name)}</AvatarFallback>
-                                                </Avatar>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p className="font-bold text-[10px]">{member.name}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ))}
-                                </TooltipProvider>
+            {/* --- COMPACT HERO HEADER --- */}
+            <div className="pb-12 border-b border-stone-200">
+                {/* 1. Header: Name & Payment Area */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+                    <div className="shrink-0">
+                        {!isReadOnly ? (
+                            <div className="flex flex-col items-end gap-3">
+                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Mã QR & Thanh toán</p>
+                                <QRUploadArea
+                                    paymentQR={paymentQR}
+                                    isUploadingQR={isUploadingQR}
+                                    onSelectFile={onSelectFile}
+                                    onDownload={handleDownloadQR}
+                                    onClear={() => setPaymentQR("")}
+                                />
                             </div>
-                            <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest bg-stone-50 hover:bg-stone-100 px-3 py-1 rounded-full border border-stone-200">
-                                {members.length} thành viên tham gia
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Payment Information Section */}
-                    <div className="flex flex-col gap-6 pt-2">
-                        {/* Method Toggle */}
-                        {!isReadOnly && (
-                            <div className="flex bg-stone-100 p-1 rounded-xl w-fit border border-stone-200/50">
-                                <button
-                                    onClick={() => {
-                                        setPaymentMethod('manual');
-                                        setPaymentQR("");
-                                    }}
-                                    className={cn(
-                                        "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
-                                        paymentMethod === 'manual' 
-                                            ? "bg-white text-indigo-600 shadow-sm" 
-                                            : "text-stone-500 hover:text-stone-700"
-                                    )}
-                                >
-                                    Chuyển khoản
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setPaymentMethod('qr');
-                                        setPaymentBank("");
-                                        setPaymentAccount("");
-                                    }}
-                                    className={cn(
-                                        "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
-                                        paymentMethod === 'qr' 
-                                            ? "bg-white text-indigo-600 shadow-sm" 
-                                            : "text-stone-500 hover:text-stone-700"
-                                    )}
-                                >
-                                    Mã QR
-                                </button>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                {paymentQR ? (
+                                    <div
+                                        className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl p-2 pr-6 hover:bg-indigo-100 transition-colors cursor-pointer group/qr-btn shadow-sm"
+                                        onClick={() => setIsQRZoomOpen(true)}
+                                    >
+                                        <QrCode />
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm font-bold text-indigo-900 group-hover/qr-btn:text-indigo-700">Mã QR <br /> thanh toán</p>
+                                        </div>
+                                    </div>
+                                ) : (paymentBank || paymentAccount) && (
+                                    <div className="flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-2xl p-4 shadow-sm group/bank-info transition-colors hover:bg-white">
+                                        <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center border border-stone-200 text-indigo-600 shadow-sm">
+                                            <CreditCard className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-stone-400 uppercase tracking-widest leading-none">{paymentBank || 'Tài khoản'}</span>
+                                            <span className="text-sm font-black text-indigo-900 font-mono tracking-tight">{paymentAccount}</span>
+                                        </div>
+                                        <button
+                                            onClick={handleCopyAccount}
+                                            className="ml-2 p-1.5 bg-white border border-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 opacity-0 group-hover/bank-info:opacity-100 transition-all shadow-sm"
+                                        >
+                                            {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
-
-                        <div className="flex flex-wrap items-center gap-4">
-                            {/* Manual Entry Mode */}
-                            {!isReadOnly && paymentMethod === 'manual' && (
-                                <>
-                                    <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all">
-                                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
-                                        <Popover open={openBankDropdown} onOpenChange={setOpenBankDropdown}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    role="combobox"
-                                                    aria-expanded={openBankDropdown}
-                                                    className="h-8 justify-between px-0 font-bold text-sm text-stone-700 hover:bg-transparent min-w-[150px] shadow-none"
-                                                >
-                                                    <span className="truncate">
-                                                        {paymentBank
-                                                            ? VIETNAMESE_BANKS.find((bank) => bank.name === paymentBank)?.name || paymentBank
-                                                            : "Chọn ngân hàng..."}
-                                                    </span>
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[300px] p-0" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Tìm ngân hàng..." className="h-9" />
-                                                    <CommandList>
-                                                        <CommandEmpty>Không tìm thấy ngân hàng.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            <ScrollArea className="h-64">
-                                                                {VIETNAMESE_BANKS.map((bank) => (
-                                                                    <CommandItem
-                                                                        key={bank.id}
-                                                                        value={`${bank.name} ${bank.fullName}`}
-                                                                        onSelect={() => {
-                                                                            setPaymentBank(bank.name);
-                                                                            setOpenBankDropdown(false);
-                                                                        }}
-                                                                        className="cursor-pointer"
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                paymentBank === bank.name ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold">{bank.name}</span>
-                                                                            <span className="text-[10px] text-stone-500 truncate max-w-[220px]">{bank.fullName}</span>
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </ScrollArea>
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm focus-within:border-indigo-500/50 transition-all group">
-                                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
-                                        <Input
-                                            value={paymentAccount}
-                                            onChange={(e) => setPaymentAccount(e.target.value)}
-                                            className="border-none bg-transparent text-stone-900 placeholder:text-stone-400 h-8 p-0 text-sm font-bold focus-visible:ring-0 min-w-[150px] placeholder:text-stone-300 flex-1"
-                                            placeholder="Số tài khoản..."
-                                        />
-                                        {paymentAccount && (
-                                            <button
-                                                onClick={handleCopyAccount}
-                                                className="p-1.5 bg-stone-50 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 transition-all"
-                                            >
-                                                {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                            </button>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {/* QR Mode Entry */}
-                            {!isReadOnly && paymentMethod === 'qr' && (
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="file"
-                                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                                        ref={fileInputRef}
-                                        onChange={onSelectFile}
-                                        className="hidden"
-                                    />
-                                    {paymentQR ? (
-                                        <div className="group relative w-32 h-32 rounded-2xl overflow-hidden border border-stone-200 shadow-sm animate-in zoom-in duration-300">
-                                            <img src={paymentQR} alt="QR Preview" className="h-full w-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={handleDownloadQR}
-                                                        className="p-2 bg-white rounded-full text-indigo-600 hover:scale-110 transition-transform"
-                                                        title="Tải mã QR"
-                                                    >
-                                                        <Download className="h-5 w-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setPaymentQR("")}
-                                                        className="p-2 bg-white rounded-full text-red-600 hover:scale-110 transition-transform"
-                                                        title="Xóa"
-                                                    >
-                                                        <Trash2 className="h-5 w-5" />
-                                                    </button>
-                                                </div>
-                                                <span className="text-[10px] font-black text-white uppercase tracking-widest font-sans">Thay đổi</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isUploadingQR}
-                                            className="w-32 h-32 border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group text-stone-400"
-                                        >
-                                            {isUploadingQR ? (
-                                                <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-                                            ) : (
-                                                <>
-                                                    <div className="p-3 bg-stone-50 rounded-xl group-hover:bg-white transition-colors">
-                                                        <Plus className="h-6 w-6" />
-                                                    </div>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest px-2 text-center">Tải lên mã QR</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* View Mode Display */}
-                            {isReadOnly && (
-                                <>
-                                    {/* Manual Display if no QR or user preferred manual */}
-                                    {!paymentQR && (paymentBank || paymentAccount) && (
-                                        <div className="flex flex-wrap items-center gap-4">
-                                            {paymentBank && (
-                                                <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm">
-                                                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Ngân hàng:</span>
-                                                    <span className="text-sm font-bold text-stone-700">{paymentBank}</span>
-                                                </div>
-                                            )}
-                                            {paymentAccount && (
-                                                <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-4 h-12 shadow-sm group">
-                                                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest whitespace-nowrap">Số tài khoản:</span>
-                                                    <span className="text-sm font-bold text-stone-700">{paymentAccount}</span>
-                                                    <button
-                                                        onClick={handleCopyAccount}
-                                                        className="p-1.5 bg-stone-50 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"
-                                                    >
-                                                        {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* QR Display */}
-                                    {paymentQR && (
-                                        <div className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
-                                            <div 
-                                                className="bg-white p-2 rounded-xl shadow-sm border border-stone-200 shrink-0 cursor-pointer group relative overflow-hidden"
-                                                onClick={() => setIsQRZoomOpen(true)}
-                                            >
-                                                <img src={paymentQR} alt="QR Code Thanh Toán" className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg transition-all duration-300 group-hover:scale-110" />
-                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Sparkles className="text-white h-8 w-8 animate-pulse" />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 text-center sm:text-left">
-                                                <h3 className="text-lg font-black text-indigo-950">Quét mã để thanh toán</h3>
-                                                <p className="text-sm font-semibold text-indigo-700/60 mt-1">Sử dụng ứng dụng ngân hàng của bạn để quét mã QR này và chuyển khoản nhanh chóng.</p>
-
-                                                <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
-                                                    {paymentBank && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm">
-                                                            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Ngân hàng</span>
-                                                            {paymentBank}
-                                                        </span>
-                                                    )}
-                                                    {paymentAccount && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm ml-0">
-                                                            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">STK</span>
-                                                            {paymentAccount}
-                                                            <button
-                                                                onClick={handleCopyAccount}
-                                                                title="Copy số tài khoản"
-                                                                className={`ml-1 flex items-center justify-center p-1 rounded transition-colors ${copiedAccount ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600'}`}
-                                                            >
-                                                                {copiedAccount ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                                            </button>
-                                                        </span>
-                                                    )}
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={handleDownloadQR}
-                                                        className="bg-white border-indigo-100 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 font-bold h-8 rounded-lg shadow-sm"
-                                                    >
-                                                        <Download className="h-3.5 w-3.5 mr-1.5" /> Tải mã QR
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
                     </div>
+                    {/* Left: Group Name with Popover Edit */}
+                    <div className="flex-1 min-w-0">
+                        {isReadOnly ? (
+                            <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-stone-900 leading-[0.8]">
+                                {groupName || "Tên nhóm..."}
+                            </h1>
+                        ) : (
+                            <Popover>
+                                <PopoverTrigger>
+                                    <div className="group/name cursor-pointer inline-flex items-center gap-6">
+                                        <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-stone-900 leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
+                                            {groupName || "Tên nhóm..."}
+                                        </h1>
+                                        <div className="h-12 w-12 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-400 group-hover/name:bg-indigo-50 group-hover/name:border-indigo-200 group-hover/name:text-indigo-600 transition-all shadow-sm">
+                                            <Edit3 className="h-5 w-5" />
+                                        </div>
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4 shadow-2xl border-indigo-100 rounded-2xl" align="start">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Đổi tên nhóm</p>
+                                            <Input
+                                                value={groupName}
+                                                onChange={(e) => setGroupName(e.target.value)}
+                                                className="font-bold border-indigo-100 focus-visible:ring-indigo-500"
+                                                placeholder="Nhập tên nhóm mới..."
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-stone-400 italic">Tên nhóm sẽ được cập nhật ngay lập tức.</p>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                    </div>
+
+                    {/* Right: Payment Shortcut */}
+
                 </div>
 
-                <div className={`grid grid-cols-1 sm:grid-cols-2 ${stats.totalDonationsAmount > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
-                    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
-                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Tổng tiền hóa đơn</p>
-                        <p className="text-3xl font-black text-stone-900 tracking-tighter"><span className="font-mono tracking-tighter">{formatCurrency(stats.totalBillAmount)}</span></p>
-                    </div>
-                    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
-                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Số người tham gia</p>
-                        <p className="text-3xl font-black text-stone-900 tracking-tighter flex items-end gap-2 leading-none">
-                            <span className="font-mono tracking-tighter">{members.length}</span>
-                            <span className="text-[13px] font-medium text-stone-500 tracking-normal mb-1">người</span>
-                        </p>
-                    </div>
-                    <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
-                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Trung bình mỗi người</p>
-                        <p className="text-3xl font-black text-stone-900 tracking-tighter"><span className="font-mono tracking-tighter">{formatCurrency(stats.avgPerPerson)}</span></p>
-                    </div>
-                    {stats.totalDonationsAmount > 0 && (
-                        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
-                            <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Tổng quỹ ủng hộ</p>
-                            <p className="text-3xl font-black text-indigo-600 tracking-tighter truncate">+<span className="font-mono tracking-tighter">{formatCurrency(stats.totalDonationsAmount)}</span></p>
-                            <p className="text-[10px] font-bold text-stone-400 mt-2 flex items-center gap-1.5 italic">
-                                <span>Cả nhóm được giảm:</span>
-                                <span className="text-indigo-500 not-italic">{Math.round((1 - stats.reductionRatio) * 100)}%</span>
-                            </p>
+                {/* 2. Unified Info Bar */}
+                <div className="flex flex-wrap items-center gap-x-12 gap-y-6">
+                    {/* Members List */}
+                    <div className="flex items-center gap-4 group/members">
+                        <div className="flex -space-x-4">
+                            <TooltipProvider>
+                                {members.slice(0, 8).map(member => (
+                                    <Tooltip key={member.id}>
+                                        <TooltipTrigger>
+                                            <Avatar className="h-10 w-10 border-4 border-white shadow-sm block transition-transform hover:scale-110 hover:z-10">
+                                                <AvatarFallback className="bg-stone-50 text-stone-400 font-bold text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                            </Avatar>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="font-bold text-[10px]">{member.name}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ))}
+                                {members.length > 8 && (
+                                    <div className="h-10 w-10 rounded-full border-4 border-white bg-stone-100 flex items-center justify-center text-[10px] font-black text-stone-400">
+                                        +{members.length - 8}
+                                    </div>
+                                )}
+                            </TooltipProvider>
                         </div>
-                    )}
+                        {!isReadOnly && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsMemDialogOpen(true)}
+                                className="h-8 w-8 rounded-full p-0 border border-stone-200 text-stone-400 hover:text-indigo-600 hover:bg-indigo-50"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Stats Divider */}
+                    <div className="hidden md:block h-8 w-px bg-stone-200" />
+
+                    {/* Key Stats Line */}
+                    <div className="flex flex-wrap items-center gap-x-10 gap-y-2">
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest leading-none">Tổng cộng</p>
+                            <p className="text-2xl font-black text-stone-900 tracking-tighter">{formatCurrency(stats.totalBillAmount)}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">Mỗi người</p>
+                            <p className="text-2xl font-black text-emerald-600 tracking-tighter">{formatCurrency(stats.avgPerPerson)}</p>
+                        </div>
+                        {stats.totalDonationsAmount > 0 && (
+                            <div className="space-y-0.5">
+                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Quỹ đóng góp</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-2xl font-black text-amber-600 tracking-tighter">+{formatCurrency(stats.totalDonationsAmount)}</p>
+                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md">-{Math.round((1 - stats.reductionRatio) * 100)}%</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+
                 </div>
             </div>
+
 
             {/* Sponsors Bar */}
             {stats.sponsors.length > 0 && (
@@ -804,17 +751,17 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                                                 <AvatarFallback className="bg-amber-100 text-amber-700 text-xs font-bold">{getInitials(sponsor.name)}</AvatarFallback>
                                             </Avatar>
                                             {idx === 0 && (
-                                                <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-1 ring-amber-400/20" title="Top 1">
+                                                <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-1 ring-amber-400/20" title="Hạng 1">
                                                     1
                                                 </div>
                                             )}
                                             {idx === 1 && (
-                                                <div className="absolute -top-2 -right-2 bg-slate-300 text-slate-800 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 2">
+                                                <div className="absolute -top-2 -right-2 bg-slate-300 text-slate-800 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Hạng 2">
                                                     2
                                                 </div>
                                             )}
                                             {idx === 2 && (
-                                                <div className="absolute -top-2 -right-2 bg-amber-700 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Top 3">
+                                                <div className="absolute -top-2 -right-2 bg-amber-700 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm" title="Hạng 3">
                                                     3
                                                 </div>
                                             )}
@@ -841,27 +788,99 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
             )}
 
             {!isReadOnly && (
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button
-                        variant="outline"
-                        onClick={openAddDonationDialog}
-                        className="border-stone-200 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
-                    >
-                        <Crown className="h-4 w-4 mr-2" /> Ủng hộ
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={openAddMemberDialog}
-                        className="border-stone-200 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
-                    >
-                        <UserPlus className="h-4 w-4 mr-2" /> Thêm người
-                    </Button>
-                    <Button
-                        onClick={openAddCategoryDialog}
-                        className="bg-white text-stone-900 hover:bg-slate-200/90 text-stone-900 text-stone-900 font-bold rounded-lg h-10 px-4 transition-none"
-                    >
-                        <Plus className="h-4 w-4 mr-2" /> Thêm khoản chi
-                    </Button>
+                <div className="flex flex-wrap  items-center justify-between gap-x-4 gap-y-3 mb-8">
+
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={openAddDonationDialog}
+                            className="border-stone-100 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
+                        >
+                            <Crown className="h-4 w-4 mr-2 text-amber-500" /> Ủng hộ
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={openAddMemberDialog}
+                            className="border-stone-100 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
+                        >
+                            <UserPlus className="h-4 w-4 mr-2" /> Thêm người
+                        </Button>
+                        <Button
+                            onClick={openAddCategoryDialog}
+                            className="bg-white text-stone-900 border border-stone-100 hover:bg-slate-200/90 font-bold rounded-lg h-10 px-4 transition-none"
+                        >
+                            <Plus className="h-4 w-4 mr-2" /> Khoản chi
+                        </Button>
+                    </div>
+
+                    <div className="w-px h-6 bg-stone-200 mx-1" />
+
+                    {/* 3. Global Actions (Save, View, Delete) */}
+                    <div className="flex items-center gap-2">
+                        {setIsPrivate && (
+                            <div className="flex items-center gap-2 mr-2 bg-white border border-stone-100 rounded-lg h-10 px-3 shadow-sm transition-all hover:border-indigo-100/50">
+                                <Checkbox
+                                    id="isPrivate-table"
+                                    checked={isPrivate}
+                                    onCheckedChange={(checked) => setIsPrivate(!!checked)}
+                                    className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                                />
+                                <Label htmlFor="isPrivate-table" className="text-[10px] font-black uppercase tracking-widest text-stone-500 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                                    {isPrivate ? <Lock size={12} className="text-amber-500" /> : <Unlock size={12} className="text-stone-400" />}
+                                    Riêng tư
+                                </Label>
+                            </div>
+                        )}
+
+
+                        {handleGoToView && (
+                            <Button
+                                onClick={handleGoToView}
+                                variant="outline"
+                                className="border-stone-100 text-stone-700 hover:bg-stone-50 font-bold h-10 px-4 rounded-lg flex items-center gap-2"
+                            >
+                                <Eye className="h-4 w-4" />
+                                <span className="text-[10px] uppercase tracking-widest font-black whitespace-nowrap">Bản in & Chia sẻ</span>
+                            </Button>
+                        )}
+
+                        {onDelete && (
+                            <Button
+                                variant="ghost"
+                                onClick={onDelete}
+                                className="text-stone-300 hover:text-red-500 hover:bg-red-50 font-bold rounded-lg h-10 px-3 flex items-center shadow-none"
+                                title="Xóa toàn bộ hóa đơn"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {handleSave && (
+                            <Button
+                                onClick={handleSave}
+                                disabled={saveStatus === "saving"}
+                                className={`font-bold rounded-lg h-10 px-5 flex items-center gap-2 shadow-sm transition-all ${saveStatus === "success"
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none"
+                                    : saveStatus === "error"
+                                        ? "bg-red-600 hover:bg-red-700 text-white border-none"
+                                        : "bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-indigo-100"
+                                    }`}
+                            >
+                                {saveStatus === "saving" ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : saveStatus === "success" ? (
+                                    <Check className="h-4 w-4" />
+                                ) : saveStatus === "error" ? (
+                                    <AlertCircle className="h-4 w-4" />
+                                ) : (
+                                    <Save className="h-4 w-4" />
+                                )}
+                                <span className="text-[10px] uppercase tracking-widest font-black">
+                                    {saveStatus === "saving" ? "Đang lưu" : saveStatus === "success" ? "Đã lưu" : saveStatus === "error" ? "Lỗi" : "Lưu"}
+                                </span>
+                            </Button>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -893,8 +912,8 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                                                     onChange={(e) => !isReadOnly && setItems(items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
                                                     readOnly={isReadOnly}
                                                     className={`h-8 border border-transparent bg-transparent  placeholder:text-primary font-black text-primary px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
-                                                    placeholder="Tên mục..."
-                                                    title={!isReadOnly ? 'Nhấn để sửa tên' : undefined}
+                                                    placeholder="Tên khoản chi..."
+                                                    title={!isReadOnly ? 'Nhấn để sửa' : undefined}
                                                 />
                                             </div>
 
@@ -1020,7 +1039,7 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                                                         <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
                                                             <div className="space-y-3 min-w-[200px]">
                                                                 <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Chi tiết tham gia</p>
-                                                                
+
                                                                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                                                     {items.map(item => {
                                                                         if (!participation[member.id]?.[item.id]) return null;
@@ -1036,16 +1055,16 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                                                                 <div className="pt-2 border-t border-stone-100 space-y-2">
                                                                     <div className="flex justify-between items-center gap-4 text-xs font-bold">
                                                                         <span className="text-stone-500">Tổng món ăn:</span>
-                                                                        <span className="font-mono">{formatCurrency(items.reduce((acc, item) => 
+                                                                        <span className="font-mono">{formatCurrency(items.reduce((acc, item) =>
                                                                             participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
                                                                         ))}</span>
                                                                     </div>
-                                                                    
+
                                                                     {stats.reductionRatio < 1 && (
                                                                         <>
                                                                             <div className="flex justify-between items-center gap-4 text-xs font-medium">
                                                                                 <span className="text-stone-500 italic">Chiết khấu ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
-                                                                                <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) => 
+                                                                                <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) =>
                                                                                     participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
                                                                                 ) * (1 - stats.reductionRatio))}</span>
                                                                             </div>
@@ -1344,9 +1363,9 @@ export function BillTable({ groupId, initialData, isReadOnly, onDataChange }: Bi
                                 </div>
 
                                 <div className="aspect-square bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200 p-4 flex items-center justify-center">
-                                    <img 
-                                        src={paymentQR} 
-                                        alt="QR Zoom" 
+                                    <img
+                                        src={paymentQR}
+                                        alt="QR Zoom"
                                         className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
                                     />
                                 </div>
