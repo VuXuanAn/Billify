@@ -225,9 +225,28 @@ export const billService = {
       .order('updated_at', { ascending: false })
 
     if (error) {
+      console.error("billService.getUserBills error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       throw error
     }
-    return groups
+    return groups || []
+  },
+
+  async getBillSummary(groupId: string) {
+    const [
+      { count: memberCount },
+      { data: items }
+    ] = await Promise.all([
+      supabase.from('members').select('*', { count: 'exact', head: true }).eq('group_id', groupId),
+      supabase.from('items').select('amount').eq('group_id', groupId)
+    ]);
+
+    const totalAmount = items?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+    return { memberCount: memberCount || 0, totalAmount };
   },
 
   async deleteBill(groupId: string) {

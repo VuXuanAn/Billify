@@ -170,6 +170,14 @@ export function BillTable({
     const paymentMethod = 'qr';
     const [isQRZoomOpen, setIsQRZoomOpen] = useState(false);
 
+    // Mobile View States
+    const [activeTab, setActiveTab] = useState<'member' | 'item'>('member');
+    const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
     const lastDataRef = useRef<string>("");
 
     // Sync external data changes if needed
@@ -325,7 +333,7 @@ export function BillTable({
                 },
                 cancel: {
                     label: commonT.cancel,
-                    onClick: () => {}
+                    onClick: () => { }
                 }
             });
             return;
@@ -579,12 +587,12 @@ export function BillTable({
     };
 
     return (
-        <div className="max-w-screen-2xl mx-auto py-12 px-6 space-y-12 text-stone-900 font-sans tracking-tight">
+        <div className="max-w-screen-2xl mx-auto py-8 sm:py-12 px-4 sm:px-6 space-y-12 text-stone-900 font-sans tracking-tight">
 
             {/* --- COMPACT HERO HEADER --- */}
-            <div className="pb-12 border-b border-stone-200">
+            <div className="pb-8 sm:pb-12 border-b border-stone-200">
                 {/* 1. Header: Name & Payment Area */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
                     <div className="shrink-0">
                         {!isReadOnly ? (
                             <div className="flex flex-col items-end gap-3">
@@ -632,14 +640,14 @@ export function BillTable({
                     {/* Left: Group Name with Popover Edit */}
                     <div className="flex-1 min-w-0">
                         {isReadOnly ? (
-                            <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-primary leading-[0.8]">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter text-primary leading-[0.9] sm:leading-[0.8]">
                                 {groupName || "Tên nhóm..."}
                             </h1>
                         ) : (
                             <Popover>
                                 <PopoverTrigger>
-                                    <div className="group/name cursor-pointer inline-flex items-center gap-6">
-                                        <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-primary leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
+                                    <div className="group/name cursor-pointer inline-flex items-center gap-4 sm:gap-6">
+                                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter text-primary leading-[0.9] sm:leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
                                             {groupName || "Tên nhóm..."}
                                         </h1>
                                         <div className="h-12 w-12 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-400 group-hover/name:bg-indigo-50 group-hover/name:border-indigo-200 group-hover/name:text-indigo-600 transition-all shadow-sm">
@@ -711,20 +719,20 @@ export function BillTable({
                     <div className="hidden md:block h-8 w-px bg-stone-200" />
 
                     {/* Key Stats Line */}
-                    <div className="flex flex-wrap items-center gap-x-10 gap-y-2">
+                    <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-10 gap-y-2">
                         <div className="space-y-0.5">
                             <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest leading-none">Tổng cộng</p>
-                            <p className="text-2xl font-black text-stone-900 tracking-tighter">{formatCurrency(stats.totalBillAmount)}</p>
+                            <p className="text-xl sm:text-2xl font-black text-stone-900 tracking-tighter">{formatCurrency(stats.totalBillAmount)}</p>
                         </div>
                         <div className="space-y-0.5">
                             <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">Mỗi người</p>
-                            <p className="text-2xl font-black text-emerald-600 tracking-tighter">{formatCurrency(stats.avgPerPerson)}</p>
+                            <p className="text-xl sm:text-2xl font-black text-emerald-600 tracking-tighter">{formatCurrency(stats.avgPerPerson)}</p>
                         </div>
                         {stats.totalDonationsAmount > 0 && (
                             <div className="space-y-0.5">
                                 <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Quỹ đóng góp</p>
                                 <div className="flex items-center gap-2">
-                                    <p className="text-2xl font-black text-amber-600 tracking-tighter">+{formatCurrency(stats.totalDonationsAmount)}</p>
+                                    <p className="text-xl sm:text-2xl font-black text-amber-600 tracking-tighter">+{formatCurrency(stats.totalDonationsAmount)}</p>
                                     <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md">-{Math.round((1 - stats.reductionRatio) * 100)}%</span>
                                 </div>
                             </div>
@@ -803,22 +811,25 @@ export function BillTable({
                         <Button
                             variant="outline"
                             onClick={openAddDonationDialog}
-                            className="border-stone-100 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
+                            className="border-stone-100 text-stone-700 hover:bg-stone-100 font-bold rounded-lg h-10 px-3 sm:px-4 transition-none shadow-sm shadow-stone-200/50"
                         >
-                            <Crown className="h-4 w-4 mr-2 text-amber-500" /> Ủng hộ
+                            <Crown className="h-4 w-4 sm:mr-2 text-amber-500" />
+                            <span className="hidden sm:inline">Ủng hộ</span>
                         </Button>
                         <Button
                             variant="outline"
                             onClick={openAddMemberDialog}
-                            className="border-stone-100 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
+                            className="border-stone-100 text-stone-700 hover:bg-stone-100 font-bold rounded-lg h-10 px-3 sm:px-4 transition-none shadow-sm shadow-stone-200/50"
                         >
-                            <UserPlus className="h-4 w-4 mr-2" /> {t.addMember}
+                            <UserPlus className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{t.addMember}</span>
                         </Button>
                         <Button
                             onClick={openAddCategoryDialog}
-                            className="bg-white text-stone-900 border border-stone-100 hover:bg-slate-200/90 font-bold rounded-lg h-10 px-4 transition-none"
+                            className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold rounded-lg h-10 px-3 sm:px-4 transition-none shadow-sm shadow-indigo-100"
                         >
-                            <Plus className="h-4 w-4 mr-2" /> {t.addItem}
+                            <Plus className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{t.addItem}</span>
                         </Button>
                     </div>
 
@@ -836,7 +847,9 @@ export function BillTable({
                                 />
                                 <Label htmlFor="isPrivate-table" className="text-[10px] font-black uppercase tracking-widest text-stone-500 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
                                     {isPrivate ? <Lock size={12} className="text-amber-500" /> : <Unlock size={12} className="text-stone-400" />}
-                                    {isPrivate ? t.privateMode : t.publicMode}
+                                    <span className="hidden sm:inline">
+                                        {isPrivate ? t.privateMode : t.publicMode}
+                                    </span>
                                 </Label>
                             </div>
                         )}
@@ -846,10 +859,10 @@ export function BillTable({
                             <Button
                                 onClick={handleGoToView}
                                 variant="outline"
-                                className="border-stone-100 text-stone-700 hover:bg-stone-50 font-bold h-10 px-4 rounded-lg flex items-center gap-2"
+                                className="border-stone-100 text-stone-700 hover:bg-stone-50 font-bold h-10 px-3 sm:px-4 rounded-lg flex items-center gap-2 shadow-sm shadow-stone-200/50"
                             >
-                                <Eye className="h-4 w-4" />
-                                <span className="text-[10px] uppercase tracking-widest font-black whitespace-nowrap">{commonT.view}</span>
+                                <Eye className="h-4 w-4 sm:mr-0.5" />
+                                <span className="hidden sm:inline text-[10px] uppercase tracking-widest font-black whitespace-nowrap">{commonT.view}</span>
                             </Button>
                         )}
 
@@ -867,11 +880,11 @@ export function BillTable({
                             <Button
                                 onClick={handleSave}
                                 disabled={saveStatus === "saving"}
-                                className={`font-bold rounded-lg h-10 px-5 flex items-center gap-2 shadow-sm transition-all ${saveStatus === "success"
+                                className={`font-bold rounded-lg h-10 px-3 sm:px-5 flex items-center gap-2 shadow-sm transition-all ${saveStatus === "success"
                                     ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none"
                                     : saveStatus === "error"
                                         ? "bg-red-600 hover:bg-red-700 text-white border-none"
-                                        : "bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-indigo-100"
+                                        : "bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-indigo-100 shadow-md"
                                     }`}
                             >
                                 {saveStatus === "saving" ? (
@@ -881,9 +894,9 @@ export function BillTable({
                                 ) : saveStatus === "error" ? (
                                     <AlertCircle className="h-4 w-4" />
                                 ) : (
-                                    <Save className="h-4 w-4" />
+                                    <Save className="h-4 w-4 sm:mr-0.5" />
                                 )}
-                                <span className="text-[10px] uppercase tracking-widest font-black">
+                                <span className="hidden sm:inline text-[10px] uppercase tracking-widest font-black">
                                     {saveStatus === "saving" ? commonT.saving : saveStatus === "success" ? commonT.saved : saveStatus === "error" ? commonT.error : commonT.save}
                                 </span>
                             </Button>
@@ -892,222 +905,378 @@ export function BillTable({
                 </div>
             )}
 
-            {/* Main Table Matrix - Simplified */}
-            <div className="bg-white border border-stone-200 rounded-xl shadow-md shadow-slate-100">
-                <ScrollArea className="w-full">
-                    <Table>
-                        <TableHeader className="bg-stone-50 text-stone-900/30 border-b border-stone-200">
-                            <TableRow className="hover:bg-transparent text-stone-900 placeholder:text-stone-400">
-                                <TableHead className="w-[240px] p-0 border-r border-b border-stone-200 bg-stone-50 text-primary sticky left-0 z-20 rounded-tl-xl align-top relative overflow-hidden group">
-                                    <div className="absolute inset-0 pointer-events-none">
-                                        <svg className="absolute w-full h-full text-stone-200" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                            <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1" />
-                                        </svg>
-                                    </div>
-                                    <div className="absolute top-4 right-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
-                                        {t.category}
-                                    </div>
-                                    <div className="absolute bottom-4 left-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
-                                        {t.members}
-                                    </div>
-                                </TableHead>
-                                {items.map(item => (
-                                    <TableHead key={item.id} className="min-w-[260px] border-l border-r border-b border-stone-200 p-0 align-top group/head transition-colors hover:bg-stone-50/50">
-                                        <div className="text-primary p-4 flex flex-row items-center justify-between gap-3 h-full ">
-                                            <div className="relative flex-1">
-                                                <Input
-                                                    value={item.name}
-                                                    onChange={(e) => !isReadOnly && setItems(items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
-                                                    readOnly={isReadOnly}
-                                                    className={`h-8 border border-transparent bg-transparent  placeholder:text-primary font-black text-primary px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
-                                                    placeholder="Tên khoản chi..."
-                                                    title={!isReadOnly ? 'Nhấn để sửa' : undefined}
-                                                />
-                                            </div>
-
-                                            <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border border-transparent transition-all ${isReadOnly ? 'border-none shadow-none bg-transparent px-0' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm focus-within:bg-white focus-within:border-stone-200 focus-within:shadow-sm shrink-0'}`}>
-                                                <IMaskInput
-                                                    id={`input-amount-${item.id}`}
-                                                    name={`input-amount-${item.id}`}
-                                                    placeholder="0"
-                                                    value={item.amount === 0 ? "" : item.amount.toString()}
-                                                    mask={Number}
-                                                    scale={0}
-                                                    thousandsSeparator="."
-                                                    radix=","
-                                                    mapToRadix={['.']}
-                                                    min={0}
-                                                    unmask={true}
-                                                    onAccept={(value, mask) => {
-                                                        if (!isReadOnly) {
-                                                            const val = mask.unmaskedValue ? Number(mask.unmaskedValue) : 0;
-                                                            updateItemAmount(item.id, val);
-                                                        }
-                                                    }}
-                                                    disabled={isReadOnly}
-                                                    className={`h-6 w-24 text-right font-mono text-primary placeholder:text-stone-400 font-bold text-sm tracking-tighter p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default opacity-100 bg-transparent disabled:text-stone-900' : 'cursor-text '}`}
-                                                    title={!isReadOnly ? 'Nhấn để sửa số tiền' : undefined}
-                                                />
-                                                <span className="text-[10px] font-black text-primary">VND</span>
-                                            </div>
+            {/* Main Table Matrix - Adaptive Layout */}
+            <div className="bg-white border border-stone-200 rounded-xl shadow-md shadow-slate-100 overflow-hidden">
+                {/* 1. Desktop Table View */}
+                <div className="hidden lg:block">
+                    <ScrollArea className="w-full">
+                        <Table>
+                            <TableHeader className="bg-stone-50 text-stone-900/30 border-b border-stone-200">
+                                <TableRow className="hover:bg-transparent text-stone-900 placeholder:text-stone-400">
+                                    <TableHead className="w-[140px] sm:w-[180px] md:w-[240px] p-0 border-r border-b border-stone-200 bg-stone-50 text-primary sticky left-0 z-20 rounded-tl-xl align-top relative overflow-hidden group">
+                                        <div className="absolute inset-0 pointer-events-none">
+                                            <svg className="absolute w-full h-full text-stone-200" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                                <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1" />
+                                            </svg>
+                                        </div>
+                                        <div className="absolute top-4 right-3 sm:right-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
+                                            {t.category}
+                                        </div>
+                                        <div className="absolute bottom-4 left-3 sm:left-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
+                                            {t.members}
                                         </div>
                                     </TableHead>
-                                ))}
-                                <TableHead className="w-[200px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-[120px] z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em]">
-                                    Cần đóng
-                                </TableHead>
-                                <TableHead className="w-[120px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-0 z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-stone-50/50 rounded-tr-xl">
-                                    Đã thanh toán
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {members.map(member => {
-                                const hasPaid = paymentStatus[member.id];
-                                return (
-                                    <TableRow
-                                        key={member.id}
-                                        className={`transition-colors duration-200 ${hasPaid ? 'bg-green-50/50 hover:bg-green-100/50' : 'hover:bg-stone-50 transition-none'}`}
-                                    >
-                                        <TableCell className={`p-4 border-r border-b border-stone-200 sticky left-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-bl-xl border-b-0' : ''}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative">
-                                                    <Avatar className={`h-8 w-8 border transition-all ${stats.memberDonated[member.id] > 0 ? 'border-amber-300 ring-2 ring-amber-50/50' : 'border-stone-200'}`}>
-                                                        <AvatarFallback className={`text-[10px] font-bold transition-colors ${stats.memberDonated[member.id] > 0 ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 hover:bg-stone-100 text-stone-400'}`}>
-                                                            {getInitials(member.name)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    {stats.memberDonated[member.id] > 0 && (
-                                                        <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-sm ring-2 ring-white">
-                                                            <Crown className="h-2 w-2 fill-current" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 flex items-center gap-2">
+                                    {items.map(item => (
+                                        <TableHead key={item.id} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] border-l border-r border-b border-stone-200 p-0 align-top group/head transition-colors hover:bg-stone-50/50">
+                                            <div className="text-primary p-4 flex flex-row items-center justify-between gap-3 h-full ">
+                                                <div className="relative flex-1">
                                                     <Input
-                                                        value={member.name}
-                                                        onChange={(e) => !isReadOnly && updateMemberName(member.id, e.target.value)}
+                                                        value={item.name}
+                                                        onChange={(e) => !isReadOnly && setItems(items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
                                                         readOnly={isReadOnly}
-                                                        className={`h-8 border border-transparent bg-transparent text-stone-900 placeholder:text-stone-400 font-bold px-2 -ml-2 text-sm focus-visible:ring-indigo-100 transition-all ${stats.memberDonated[member.id] > 0 ? 'text-amber-900' : 'text-stone-800'} ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
-                                                        title={!isReadOnly ? 'Nhấn để sửa tên' : undefined}
+                                                        className={`h-8 border border-transparent bg-transparent  placeholder:text-primary font-black text-primary px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
+                                                        placeholder="Tên khoản chi..."
+                                                        title={!isReadOnly ? 'Nhấn để sửa' : undefined}
                                                     />
-                                                    {stats.memberDonated[member.id] > 0 && (
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger render={<div className="cursor-help shrink-0" />}>
-                                                                    <Crown className="h-3 w-3 text-amber-500 fill-amber-500 animate-pulse" />
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="right">
-                                                                    <p className="text-[10px] font-bold">Người ủng hộ quỹ</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    )}
+                                                </div>
+
+                                                <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border border-transparent transition-all ${isReadOnly ? 'border-none shadow-none bg-transparent px-0' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm focus-within:bg-white focus-within:border-stone-200 focus-within:shadow-sm shrink-0'}`}>
+                                                    <IMaskInput
+                                                        id={`input-amount-${item.id}`}
+                                                        name={`input-amount-${item.id}`}
+                                                        placeholder="0"
+                                                        value={item.amount === 0 ? "" : item.amount.toString()}
+                                                        mask={Number}
+                                                        scale={0}
+                                                        thousandsSeparator="."
+                                                        radix=","
+                                                        mapToRadix={['.']}
+                                                        min={0}
+                                                        unmask={true}
+                                                        onAccept={(value, mask) => {
+                                                            if (!isReadOnly) {
+                                                                const val = mask.unmaskedValue ? Number(mask.unmaskedValue) : 0;
+                                                                updateItemAmount(item.id, val);
+                                                            }
+                                                        }}
+                                                        disabled={isReadOnly}
+                                                        className={`h-6 w-24 text-right font-mono text-primary placeholder:text-stone-400 font-bold text-sm tracking-tighter p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default opacity-100 bg-transparent disabled:text-stone-900' : 'cursor-text '}`}
+                                                        title={!isReadOnly ? 'Nhấn để sửa số tiền' : undefined}
+                                                    />
+                                                    <span className="text-[10px] font-black text-primary">VND</span>
                                                 </div>
                                             </div>
-                                        </TableCell>
-                                        {items.map(item => {
-                                            const isParticipating = participation[member.id]?.[item.id] || false;
-                                            return (
-                                                <TableCell key={item.id} className="p-0 border-r border-stone-200">
-                                                    <div className="flex flex-row items-center justify-center py-4 gap-3">
-                                                        {!isReadOnly && (
-                                                            <Checkbox
-                                                                checked={isParticipating}
-                                                                onCheckedChange={() => setParticipation(prev => ({
+                                        </TableHead>
+                                    ))}
+                                    <TableHead className="w-[110px] sm:w-[150px] md:w-[200px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-[100px] sm:right-[120px] z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em]">
+                                        Cần đóng
+                                    </TableHead>
+                                    <TableHead className="w-[100px] sm:w-[120px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-0 z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-stone-50/50 rounded-tr-xl">
+                                        Đã thanh toán
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {members.map(member => {
+                                    const hasPaid = paymentStatus[member.id];
+                                    return (
+                                        <TableRow
+                                            key={member.id}
+                                            className={`transition-colors duration-200 ${hasPaid ? 'bg-green-50/50 hover:bg-green-100/50' : 'hover:bg-stone-50 transition-none'}`}
+                                        >
+                                            <TableCell className={`p-4 border-r border-b border-stone-200 sticky left-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-bl-xl border-b-0' : ''}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <Avatar className={`h-8 w-8 border transition-all ${stats.memberDonated[member.id] > 0 ? 'border-amber-300 ring-2 ring-amber-50/50' : 'border-stone-200'}`}>
+                                                            <AvatarFallback className={`text-[10px] font-bold transition-colors ${stats.memberDonated[member.id] > 0 ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 hover:bg-stone-100 text-stone-400'}`}>
+                                                                {getInitials(member.name)}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        {stats.memberDonated[member.id] > 0 && (
+                                                            <div className="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-sm ring-2 ring-white">
+                                                                <Check className="h-2 w-2 fill-current" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 flex items-center gap-2">
+                                                        <Input
+                                                            value={member.name}
+                                                            onChange={(e) => !isReadOnly && updateMemberName(member.id, e.target.value)}
+                                                            readOnly={isReadOnly}
+                                                            className={`h-8 border border-transparent bg-transparent text-stone-900 placeholder:text-stone-400 font-bold px-2 -ml-2 text-sm focus-visible:ring-indigo-100 transition-all ${stats.memberDonated[member.id] > 0 ? 'text-amber-900' : 'text-stone-800'} ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
+                                                            title={!isReadOnly ? 'Nhấn để sửa tên' : undefined}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            {items.map(item => {
+                                                const isParticipating = participation[member.id]?.[item.id] || false;
+                                                return (
+                                                    <TableCell key={item.id} className="p-0 border-r border-stone-200">
+                                                        <div className="flex flex-row items-center justify-center py-4 gap-3">
+                                                            {!isReadOnly && (
+                                                                <Checkbox
+                                                                    checked={isParticipating}
+                                                                    onCheckedChange={() => setParticipation(prev => ({
+                                                                        ...prev,
+                                                                        [member.id]: { ...prev[member.id], [item.id]: !prev[member.id]?.[item.id] }
+                                                                    }))}
+                                                                    className="h-5 w-5 rounded border-stone-300 transition-none"
+                                                                />
+                                                            )}
+
+                                                            {isReadOnly ? (
+                                                                <span className={`text-[10px] font-bold ${isParticipating ? 'text-indigo-600' : 'text-stone-300 italic'}`}>
+                                                                    {isParticipating ? formatCurrency(stats.itemSplits[item.id]) : ""}
+                                                                </span>
+                                                            ) : (
+                                                                <span className={`text-[10px] font-medium ${isParticipating ? 'text-indigo-600' : 'text-stone-300'}`}>
+                                                                    <span className="font-mono tracking-tighter">{formatCurrency(stats.itemSplits[item.id])}</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            <TableCell className={`text-center sticky right-[100px] sm:right-[120px] z-10 border-l border-b border-stone-200 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'border-b-0' : ''}`}>
+                                                <div className="flex flex-col items-center">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200 cursor-help">
+                                                                    <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                                </p>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
+                                                                <div className="space-y-3 min-w-[200px]">
+                                                                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{translations[language].personalSlip.details}</p>
+
+                                                                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                                                        {items.map(item => {
+                                                                            if (!participation[member.id]?.[item.id]) return null;
+                                                                            return (
+                                                                                <div key={item.id} className="flex justify-between items-start gap-4 text-xs">
+                                                                                    <span className="text-stone-600 font-medium line-clamp-1 flex-1">• {item.name}</span>
+                                                                                    <span className="font-mono text-stone-900 shrink-0">{formatCurrency(stats.itemSplits[item.id])}</span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    <div className="pt-2 border-t border-stone-100 space-y-2">
+                                                                        <div className="flex justify-between items-center gap-4 text-xs font-bold">
+                                                                            <span className="text-stone-500">{translations[language].personalSlip.subtotal}:</span>
+                                                                            <span className="font-mono">{formatCurrency(items.reduce((acc, item) =>
+                                                                                participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
+                                                                            ))}</span>
+                                                                        </div>
+
+                                                                        {stats.reductionRatio < 1 && (
+                                                                            <>
+                                                                                <div className="flex justify-between items-center gap-4 text-xs font-medium">
+                                                                                    <span className="text-stone-500 italic">{translations[language].personalSlip.deduction} ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
+                                                                                    <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) =>
+                                                                                        participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
+                                                                                    ) * (1 - stats.reductionRatio))}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between items-center gap-4 text-sm font-black pt-1 border-t border-stone-100">
+                                                                                    <span className="text-stone-900">{t.debt}:</span>
+                                                                                    <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className={`p-0 border-l border-b border-stone-200 sticky right-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-br-xl border-b-0' : ''}`}>
+                                                <div className="flex justify-center items-center py-4 h-full">
+                                                    <Checkbox
+                                                        checked={paymentStatus[member.id] || false}
+                                                        onCheckedChange={(checked) => !isReadOnly && setPaymentStatus(prev => ({
+                                                            ...prev,
+                                                            [member.id]: !!checked
+                                                        }))}
+                                                        disabled={isReadOnly}
+                                                        className={`h-5 w-5 rounded-md transition-all ${paymentStatus[member.id] ? 'border-green-500 bg-green-500 text-white shadow-sm' : 'border-stone-300'} ${isReadOnly ? 'opacity-80' : ''}`}
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </div>
+
+                {/* 2. Adaptive Mobile View */}
+                <div className="lg:hidden bg-stone-50/50">
+                    <div className="flex border-b border-stone-200">
+                        <button
+                            onClick={() => setActiveTab('member')}
+                            className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'member' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
+                        >
+                            {t.viewByMember}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('item')}
+                            className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'item' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
+                        >
+                            {t.viewByItem}
+                        </button>
+                    </div>
+
+                    <div className="p-4 space-y-4">
+                        {activeTab === 'member' ? (
+                            members.map(member => {
+                                const isExpanded = expandedIds[member.id];
+                                const hasPaid = paymentStatus[member.id];
+                                return (
+                                    <div key={member.id} className={`bg-white rounded-2xl border transition-all ${hasPaid ? 'border-green-100 shadow-sm' : 'border-stone-100 shadow-sm shadow-stone-200/50'}`}>
+                                        <div
+                                            className="p-4 flex items-center justify-between cursor-pointer"
+                                            onClick={() => toggleExpand(member.id)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-10 w-10 border border-stone-100">
+                                                    <AvatarFallback className={`font-bold text-xs ${hasPaid ? 'bg-green-50 text-green-600' : 'bg-stone-50 text-stone-400'}`}>
+                                                        {getInitials(member.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className={`font-bold text-sm ${hasPaid ? 'text-green-900' : 'text-stone-900'}`}>{member.name}</p>
+                                                    <p className="text-[10px] font-black text-indigo-600/70 tracking-tighter uppercase">{formatCurrency(stats.memberShares[member.id])}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <Checkbox
+                                                        checked={paymentStatus[member.id] || false}
+                                                        onCheckedChange={(checked) => !isReadOnly && setPaymentStatus(prev => ({
+                                                            ...prev,
+                                                            [member.id]: !!checked
+                                                        }))}
+                                                        className={`h-6 w-6 rounded-lg ${paymentStatus[member.id] ? 'border-green-500 bg-green-500 text-white' : 'border-stone-200'}`}
+                                                    />
+                                                </div>
+                                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+                                                    <ChevronRight className="h-4 w-4 text-stone-300" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className="px-4 pb-4 pt-2 border-t border-stone-50 space-y-3">
+                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{t.category}</p>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {items.map(item => {
+                                                        const isParticipating = participation[member.id]?.[item.id];
+                                                        return (
+                                                            <div
+                                                                key={item.id}
+                                                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isParticipating ? 'bg-indigo-50/30 border-indigo-50' : 'bg-white border-transparent'}`}
+                                                                onClick={() => !isReadOnly && setParticipation(prev => ({
                                                                     ...prev,
                                                                     [member.id]: { ...prev[member.id], [item.id]: !prev[member.id]?.[item.id] }
                                                                 }))}
-                                                                className="h-5 w-5 rounded border-stone-300 transition-none"
-                                                            />
-                                                        )}
-
-                                                        {isReadOnly ? (
-                                                            <span className={`text-[10px] font-bold ${isParticipating ? 'text-indigo-600' : 'text-stone-300 italic'}`}>
-                                                                {isParticipating ? formatCurrency(stats.itemSplits[item.id]) : ""}
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`text-[10px] font-medium ${isParticipating ? 'text-indigo-600' : 'text-stone-300'}`}>
-                                                                <span className="font-mono tracking-tighter">{formatCurrency(stats.itemSplits[item.id])}</span>
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            );
-                                        })}
-                                        <TableCell className={`text-center sticky right-[120px] z-10 border-l border-b border-stone-200 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'border-b-0' : ''}`}>
-                                            <div className="flex flex-col items-center">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger render={<div className="cursor-help" />}>
-                                                            <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200">
-                                                                <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
-                                                            </p>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
-                                                            <div className="space-y-3 min-w-[200px]">
-                                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{translations[language].personalSlip.details}</p>
-
-                                                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                                                    {items.map(item => {
-                                                                        if (!participation[member.id]?.[item.id]) return null;
-                                                                        return (
-                                                                            <div key={item.id} className="flex justify-between items-start gap-4 text-xs">
-                                                                                <span className="text-stone-600 font-medium line-clamp-1 flex-1">• {item.name}</span>
-                                                                                <span className="font-mono text-stone-900 shrink-0">{formatCurrency(stats.itemSplits[item.id])}</span>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <Checkbox
+                                                                        checked={isParticipating}
+                                                                        className="h-4 w-4"
+                                                                        onCheckedChange={() => { }} // Controlled by Div above
+                                                                    />
+                                                                    <span className={`text-xs font-bold ${isParticipating ? 'text-indigo-900' : 'text-stone-400'}`}>{item.name}</span>
                                                                 </div>
-
-                                                                <div className="pt-2 border-t border-stone-100 space-y-2">
-                                                                    <div className="flex justify-between items-center gap-4 text-xs font-bold">
-                                                                        <span className="text-stone-500">{translations[language].personalSlip.subtotal}:</span>
-                                                                        <span className="font-mono">{formatCurrency(items.reduce((acc, item) =>
-                                                                            participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
-                                                                        ))}</span>
-                                                                    </div>
-
-                                                                    {stats.reductionRatio < 1 && (
-                                                                        <>
-                                                                            <div className="flex justify-between items-center gap-4 text-xs font-medium">
-                                                                                <span className="text-stone-500 italic">{translations[language].personalSlip.deduction} ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
-                                                                                <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) =>
-                                                                                    participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
-                                                                                ) * (1 - stats.reductionRatio))}</span>
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center gap-4 text-sm font-black pt-1 border-t border-stone-100">
-                                                                                <span className="text-stone-900">{t.debt}:</span>
-                                                                                <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-                                                                </div>
+                                                                <span className={`text-[10px] font-mono ${isParticipating ? 'text-indigo-600' : 'text-stone-300'}`}>
+                                                                    {formatCurrency(stats.itemSplits[item.id])}
+                                                                </span>
                                                             </div>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className={`p-0 border-l border-b border-stone-200 sticky right-0 z-10 transition-colors ${hasPaid ? 'bg-green-50/50' : 'bg-white'} ${member.id === members[members.length - 1]?.id ? 'rounded-br-xl border-b-0' : ''}`}>
-                                            <div className="flex justify-center items-center py-4 h-full">
-                                                <Checkbox
-                                                    checked={paymentStatus[member.id] || false}
-                                                    onCheckedChange={(checked) => !isReadOnly && setPaymentStatus(prev => ({
-                                                        ...prev,
-                                                        [member.id]: !!checked
-                                                    }))}
-                                                    disabled={isReadOnly}
-                                                    className={`h-5 w-5 rounded-md transition-all ${paymentStatus[member.id] ? 'border-green-500 bg-green-500 text-white shadow-sm' : 'border-stone-300'} ${isReadOnly ? 'opacity-80' : ''}`}
-                                                />
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                        )}
+                                    </div>
                                 );
-                            })}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
+                            })
+                        ) : (
+                            items.map(item => {
+                                const isExpanded = expandedIds[item.id];
+                                const participantCount = members.filter(m => participation[m.id]?.[item.id]).length;
+                                return (
+                                    <div key={item.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm shadow-stone-200/50 transition-all">
+                                        <div
+                                            className="p-4 flex items-center justify-between cursor-pointer"
+                                            onClick={() => toggleExpand(item.id)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
+                                                    <BarChart3 className="h-5 w-5 text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-stone-900">{item.name}</p>
+                                                    <p className="text-[10px] font-black text-stone-400 tracking-tighter uppercase">{formatCurrency(item.amount)} • {participantCount} {commonT.participants}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black text-emerald-600 tracking-tighter uppercase">{formatCurrency(stats.itemSplits[item.id])}</p>
+                                                    <p className="text-[8px] font-bold text-stone-400 uppercase tracking-tighter">mỗi người</p>
+                                                </div>
+                                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+                                                    <ChevronRight className="h-4 w-4 text-stone-300" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className="px-4 pb-4 pt-2 border-t border-stone-50 space-y-3">
+                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{t.members}</p>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {members.map(member => {
+                                                        const isParticipating = participation[member.id]?.[item.id];
+                                                        return (
+                                                            <div
+                                                                key={member.id}
+                                                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isParticipating ? 'bg-indigo-50/30 border-indigo-50' : 'bg-white border-transparent'}`}
+                                                                onClick={() => !isReadOnly && setParticipation(prev => ({
+                                                                    ...prev,
+                                                                    [member.id]: { ...prev[member.id], [item.id]: !prev[member.id]?.[item.id] }
+                                                                }))}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <Checkbox
+                                                                        checked={isParticipating}
+                                                                        className="h-4 w-4"
+                                                                        onCheckedChange={() => { }}
+                                                                    />
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Avatar className="h-6 w-6 border border-stone-100">
+                                                                            <AvatarFallback className="font-bold text-[8px] bg-stone-50 text-stone-400">{getInitials(member.name)}</AvatarFallback>
+                                                                        </Avatar>
+                                                                        <span className={`text-xs font-bold ${isParticipating ? 'text-indigo-900' : 'text-stone-400'}`}>{member.name}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {isParticipating && (
+                                                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">Đang tham gia</div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
             </div>
 
 

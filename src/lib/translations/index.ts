@@ -108,6 +108,8 @@ export type Translation = {
     deleteMember: string;
     noQRFound: string;
     noQRDescription: string;
+    viewByMember: string;
+    viewByItem: string;
     qrFound: string;
     qrAutoFilled: string;
     uploadQR: string;
@@ -142,6 +144,35 @@ export type Translation = {
       list?: string[];
     }>;
     footer: string;
+  };
+  dashboard: {
+    title: string;
+    subtitle: string;
+    newBill: string;
+    noBills: string;
+    noBillsDesc: string;
+    startNow: string;
+    bill: string;
+    deleteConfirm: string;
+    deleteError: string;
+    loading: string;
+    participants: string;
+    totalAmount: string;
+    yearHeading: string;
+  };
+  footer: {
+    product: string;
+    features: string;
+    pricing: string;
+    company: string;
+    about: string;
+    contact: string;
+    legal: string;
+    privacy: string;
+    newsletter: string;
+    newsletterPlaceholder: string;
+    subscribe: string;
+    slogan: string;
   };
 };
 

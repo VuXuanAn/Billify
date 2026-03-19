@@ -79,7 +79,7 @@ export function Header() {
                 {/* Mình thêm cursor-help để chuột đổi icon khi hover, báo hiệu cho user biết có tooltip */}
                 <span className="flex gap-2 items-center font-black px-1.5 py-1 bg-blue-50 text-blue-600 rounded-md border border-blue-100 tracking-widest text-[14px] cursor-help">
                   <FlaskConical className="w-4 h-4" />
-                  <span>
+                  <span className="hidden sm:block">
                     {t.beta}
                   </span>
                 </span>
