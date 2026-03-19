@@ -7,6 +7,15 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import {
   Avatar,
@@ -22,11 +31,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, LayoutDashboard, LogIn, FlaskConical } from "lucide-react";
+import { LogOut, User, LayoutDashboard, LogIn, FlaskConical, Heart } from "lucide-react";
 
 export function Header() {
   const { setStep } = useBillStore();
   const { user, loading } = useAuthStore();
+  const { language } = useLanguageStore();
+  const t = translations[language].common;
   const router = useRouter();
   const pathname = usePathname();
 
@@ -52,9 +63,7 @@ export function Header() {
     <header className="w-full bg-white border-b border-stone-200 sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         <div onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-            <span className="text-white font-black text-lg">B</span>
-          </div>
+          <img src="/logo.png" alt="Logo" className="w-12 h-12" />
           <div className="flex items-baseline gap-1.5">
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-stone-900 leading-none">
               Billify
@@ -63,13 +72,27 @@ export function Header() {
           </div>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
+          <LanguageSwitcher />
+          <TooltipProvider delay={200}>
+            <Tooltip>
+              <TooltipTrigger>
+                {/* Mình thêm cursor-help để chuột đổi icon khi hover, báo hiệu cho user biết có tooltip */}
+                <span className="flex gap-2 items-center font-black px-1.5 py-1 bg-blue-50 text-blue-600 rounded-md border border-blue-100 tracking-widest text-[14px] cursor-help">
+                  <FlaskConical className="w-4 h-4" />
+                  <span>
+                    {t.beta}
+                  </span>
+                </span>
+              </TooltipTrigger>
 
-          <span className="text-[14px] py-1 flex gap-2 items-center font-black px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md border border-blue-100  tracking-widest">
-            <FlaskConical />
-            <span>
-              Phiên bản thử nghiệm
-            </span>
-          </span>
+              {/* Giới hạn chiều rộng (max-w-xs) để text dài tự động rớt dòng cho đẹp */}
+              <TooltipContent side="top" className="max-w-xs text-center leading-relaxed">
+                <p>
+                  {t.betaWarning}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {!loading && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center justify-center h-9 w-9 rounded-full border border-stone-200 overflow-hidden hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -90,7 +113,7 @@ export function Header() {
                   <DropdownMenuLabel className="px-3 py-2">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-bold text-stone-900 truncate">
-                        {user.user_metadata?.full_name || "Người dùng"}
+                        {user.user_metadata?.full_name || (language === "vi" ? "Người dùng" : "User")}
                       </p>
                       <p className="text-xs text-stone-500 truncate">{user.email}</p>
                     </div>
@@ -99,7 +122,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/dashboard')} className="flex items-center px-3 py-2 text-sm text-stone-700 cursor-pointer hover:bg-stone-50 rounded-md mx-1">
                   <LayoutDashboard className="mr-2 h-4 w-4 text-stone-400" />
-                  <span>Tổng quan</span>
+                  <span>{t.dashboard}</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -108,7 +131,7 @@ export function Header() {
                   className="flex items-center px-3 py-2 text-sm text-red-600 font-bold cursor-pointer hover:bg-red-50 rounded-md mx-1"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Đăng xuất</span>
+                  <span>{t.logout}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -120,7 +143,7 @@ export function Header() {
               className="border-stone-200 text-stone-700 font-bold h-9 sm:h-10 px-4 sm:px-6 text-sm shadow-sm hover:bg-stone-50"
             >
               <LogIn className="w-4 h-4 mr-2" />
-              Đăng nhập
+              {t.login}
             </Button>
           )}
 

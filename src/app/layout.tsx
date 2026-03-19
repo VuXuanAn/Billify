@@ -6,6 +6,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 
 import GridPattern from "@/components/magicui/grid-pattern";
 import { AuthProvider } from "@/components/AuthProvider";
+import { SupportFAB } from "@/components/SupportFAB";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -52,6 +53,7 @@ export default function RootLayout({
           />
           <div className="relative z-10">
             {children}
+            <SupportFAB />
           </div>
         </AuthProvider>
       </body>

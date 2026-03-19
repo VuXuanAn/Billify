@@ -1,20 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { billService } from "@/lib/services/billService";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useBillStore } from "@/store/useBillStore";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 export default function NewBillPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const { setGroupName, setSetupMembers } = useBillStore();
+  const { language } = useLanguageStore();
+  const t = translations[language].newBill;
+  const commonT = translations[language].common;
   
   const [groupName, setGroupNameLocal] = useState("");
   const [setupMembers, setSetupMembersLocal] = useState<string[]>([]);
@@ -44,32 +46,32 @@ export default function NewBillPage() {
         <main className="flex-1 flex flex-col items-center justify-center p-6 bg-stone-50 py-24">
           <div className="w-full max-w-md bg-white border border-stone-200 shadow-sm p-10 rounded-2xl space-y-8">
             <div className="space-y-3 text-center sm:text-left">
-              <h2 className="text-2xl font-black text-stone-900 tracking-tight">Thiết lập hóa đơn mới</h2>
-              <p className="text-sm text-stone-500 font-medium leading-relaxed">Đặt tên cho chuyến đi hoặc sự kiện của bạn để bắt đầu theo dõi chi tiêu.</p>
+              <h2 className="text-2xl font-black text-stone-900 tracking-tight">{t.title}</h2>
+              <p className="text-sm text-stone-500 font-medium leading-relaxed">{t.description}</p>
             </div>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Tên sự kiện</label>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">{t.groupNameLabel}</label>
                 <Input
                   autoFocus
                   disabled={isCreating}
                   value={groupName}
                   onChange={(e) => setGroupNameLocal(e.target.value)}
-                  placeholder="Ví dụ: Du lịch Đà Lạt 2024..."
+                  placeholder={t.groupNamePlaceholder}
                   className="h-12 text-base font-medium rounded-lg border-stone-300 bg-white focus-visible:ring-blue-500 placeholder:text-stone-400"
                 />
               </div>
 
               <div className="space-y-3 pt-2">
-                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Thành viên tham gia</label>
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">{translations[language].billTable.members}</label>
                 
                 <div className="flex gap-2">
                   <Input
                     disabled={isCreating}
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
-                    placeholder="Thêm tên thành viên..."
+                    placeholder={t.membersPlaceholder}
                     className="h-10 text-sm font-medium rounded-lg border-stone-300 focus-visible:ring-blue-500 placeholder:text-stone-400"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && newMemberName.trim()) {
@@ -91,7 +93,7 @@ export default function NewBillPage() {
                     }}
                     className="h-10 px-4 whitespace-nowrap font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 border-none shadow-none"
                   >
-                    Thêm
+                    {translations[language].billTable.addMember}
                   </Button>
                 </div>
 
@@ -107,7 +109,7 @@ export default function NewBillPage() {
                             <button
                               onClick={() => setSetupMembersLocal(setupMembers.filter((_, i) => i !== idx))}
                               className="absolute -top-1 -right-1 bg-red-100 text-red-600 rounded-full h-5 w-5 flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors border-2 border-white shadow-sm"
-                              title="Xóa thành viên"
+                              title={translations[language].billTable.deleteMember}
                             >
                               &times;
                             </button>
@@ -129,10 +131,10 @@ export default function NewBillPage() {
                   {isCreating ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Đang tạo hóa đơn...
+                      {commonT.loading}
                     </>
                   ) : (
-                    "Tiếp tục"
+                    commonT.confirm
                   )}
                 </Button>
                 <div className="text-center">
@@ -141,7 +143,7 @@ export default function NewBillPage() {
                     onClick={() => router.push("/")}
                     className="text-stone-400 text-sm font-medium hover:text-stone-900 transition-colors disabled:opacity-30"
                   >
-                    Hủy bỏ
+                    {commonT.cancel}
                   </button>
                 </div>
               </div>

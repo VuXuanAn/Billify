@@ -5,13 +5,13 @@ import { useRouter, useParams } from "next/navigation";
 import { BillTable } from "@/components/BillTable";
 import { PersonalSlip } from "@/components/PersonalSlip";
 import { Button } from "@/components/ui/button";
-import { 
-    Loader2, 
-    Home, 
-    Lock, 
-    Unlock, 
-    LayoutList, 
-    User, 
+import {
+    Loader2,
+    Home,
+    Lock,
+    Unlock,
+    LayoutList,
+    User,
     ChevronRight,
     Search
 } from "lucide-react";
@@ -26,6 +26,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 export default function DynamicViewPage() {
     const router = useRouter();
@@ -37,6 +39,11 @@ export default function DynamicViewPage() {
     const [error, setError] = useState(false);
     const [viewMode, setViewMode] = useState<"list" | "personal">("list");
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+    const { language } = useLanguageStore();
+    const t = translations[language].personalSlip;
+    const commonT = translations[language].common;
+    const billT = translations[language].billTable;
+    const editorT = translations[language].editor;
 
     useEffect(() => {
         async function loadData() {
@@ -68,7 +75,7 @@ export default function DynamicViewPage() {
         return (
             <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans tracking-tight">
                 <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-[0.2em] text-center">Đang tải hóa đơn...</p>
+                <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-[0.2em] text-center">{commonT.loading}</p>
             </div>
         );
     }
@@ -80,14 +87,14 @@ export default function DynamicViewPage() {
                 <main className="flex-1 flex items-center justify-center p-6 bg-stone-50">
                     <div className="text-center space-y-6 max-w-md bg-white p-10 rounded-3xl border border-stone-200 shadow-xl">
                         <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-2">
-                             <Search className="h-8 w-8 text-red-500" />
+                            <Search className="h-8 w-8 text-red-500" />
                         </div>
                         <div className="space-y-2">
-                            <h1 className="text-2xl font-black text-stone-900 tracking-tight">Không tìm thấy dữ liệu</h1>
-                            <p className="text-stone-500 font-medium leading-relaxed">Dữ liệu hóa đơn này không tồn tại hoặc link chia sẻ đã hết hạn.</p>
+                            <h1 className="text-2xl font-black text-stone-900 tracking-tight">{editorT.notFound}</h1>
+                            <p className="text-stone-500 font-medium leading-relaxed">{editorT.notFoundMessage}</p>
                         </div>
                         <Button onClick={() => router.push("/")} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 font-black h-12 rounded-xl shadow-lg shadow-indigo-100 uppercase text-xs tracking-widest">
-                            <Home className="mr-2 h-4 w-4" /> Quay lại trang chủ
+                            <Home className="mr-2 h-4 w-4" /> {commonT.backToHome}
                         </Button>
                     </div>
                 </main>
@@ -109,7 +116,7 @@ export default function DynamicViewPage() {
                     <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-8 border-b border-stone-200 pb-8">
                         <div className="space-y-4">
                             <div className="space-y-1">
-                                <h1 className="text-5xl font-black text-stone-900 tracking-tighter leading-none">{data.groupName || "Hóa đơn"}</h1>
+                                <h1 className="text-5xl font-black text-primary tracking-tighter leading-none">{data.groupName || commonT.invoice}</h1>
 
                             </div>
                         </div>
@@ -120,25 +127,25 @@ export default function DynamicViewPage() {
                                 onClick={() => setViewMode("list")}
                                 className={cn(
                                     "flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                                    viewMode === "list" 
-                                        ? "bg-white text-indigo-600 shadow-md ring-1 ring-stone-200/50" 
+                                    viewMode === "list"
+                                        ? "bg-white text-indigo-600 shadow-md ring-1 ring-stone-200/50"
                                         : "text-stone-400 hover:text-stone-600"
                                 )}
                             >
                                 <LayoutList size={14} />
-                                Danh sách
+                                {commonT.list}
                             </button>
                             <button
                                 onClick={() => setViewMode("personal")}
                                 className={cn(
                                     "flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                                    viewMode === "personal" 
-                                        ? "bg-white text-indigo-600 shadow-md ring-1 ring-stone-200/50" 
+                                    viewMode === "personal"
+                                        ? "bg-white text-indigo-600 shadow-md ring-1 ring-stone-200/50"
                                         : "text-stone-400 hover:text-stone-600"
                                 )}
                             >
                                 <User size={14} />
-                                Cá nhân
+                                {commonT.personal}
                             </button>
                         </div>
                     </div>
@@ -146,19 +153,19 @@ export default function DynamicViewPage() {
                     {/* Content Section */}
                     {viewMode === "list" ? (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                             <BillTable initialData={data} isReadOnly={true} />
+                            <BillTable initialData={data} isReadOnly={true} />
                         </div>
                     ) : (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             {/* Member Selector Select */}
                             <div className="flex flex-col items-center gap-3">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">Chọn thành viên để xem hóa đơn</p>
-                                <Select 
-                                    value={selectedMemberId || ""} 
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">{t.selectMember}</p>
+                                <Select
+                                    value={selectedMemberId || ""}
                                     onValueChange={(val) => setSelectedMemberId(val)}
                                 >
                                     <SelectTrigger className="w-64 bg-white border-2 border-stone-100 rounded-2xl h-12 px-5 font-black uppercase text-[10px] tracking-widest shadow-sm hover:border-indigo-100 transition-all">
-                                        <SelectValue placeholder="Chọn thành viên...">
+                                        <SelectValue placeholder={t.selectMember}>
                                             {selectedMemberId && (
                                                 <div className="flex items-center gap-2">
                                                     <div className="h-4 w-4 bg-stone-50 rounded flex items-center justify-center text-[7px] font-black text-stone-500">

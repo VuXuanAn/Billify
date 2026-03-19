@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Download, Trash2, Plus, Loader2 } from "lucide-react";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 interface QRUploadAreaProps {
     paymentQR: string;
@@ -19,6 +21,9 @@ export const QRUploadArea: React.FC<QRUploadAreaProps> = ({
     onClear,
 }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const { language } = useLanguageStore();
+    const t = translations[language].billTable;
+    const commonT = translations[language].common;
 
     return (
         <div className="flex items-center gap-3">
@@ -40,7 +45,7 @@ export const QRUploadArea: React.FC<QRUploadAreaProps> = ({
                                     onDownload();
                                 }}
                                 className="p-2 bg-white rounded-full text-indigo-600 hover:scale-110 transition-transform"
-                                title="Tải mã QR thanh toán"
+                                title={t.qrCode}
                             >
                                 <Download className="h-5 w-5" />
                             </button>
@@ -50,12 +55,12 @@ export const QRUploadArea: React.FC<QRUploadAreaProps> = ({
                                     onClear();
                                 }}
                                 className="p-2 bg-white rounded-full text-red-600 hover:scale-110 transition-transform"
-                                title="Xóa"
+                                title={commonT.delete}
                             >
                                 <Trash2 className="h-5 w-5" />
                             </button>
                         </div>
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest font-sans">Thay đổi</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest font-sans">{translations[language].billTable.actions}</span>
                     </div>
                 </div>
             ) : (
@@ -71,7 +76,7 @@ export const QRUploadArea: React.FC<QRUploadAreaProps> = ({
                             <div className="p-3 bg-stone-50 rounded-xl group-hover:bg-white transition-colors">
                                 <Plus className="h-6 w-6" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2 text-center">Tải lên mã QR</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest px-2 text-center">{t.uploadQR}</span>
                         </>
                     )}
                 </button>

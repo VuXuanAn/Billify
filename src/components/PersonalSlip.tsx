@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 interface PersonalSlipProps {
     member: { id: string; name: string };
@@ -49,6 +51,10 @@ export function PersonalSlip({
     paymentStatus
 }: PersonalSlipProps) {
     const [copied, setCopied] = React.useState(false);
+    const { language } = useLanguageStore();
+    const t = translations[language].personalSlip;
+    const billT = translations[language].billTable;
+    const commonT = translations[language].common;
 
     // Calculate personal items
     const personalItems = items.filter(item => participation[member.id]?.[item.id]);
@@ -108,7 +114,7 @@ export function PersonalSlip({
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">
                             <Receipt size={12} />
-                            Hóa đơn cá nhân
+                            {t.title}
                         </div>
                         <h2 className="text-3xl font-black text-stone-900 tracking-tight">{member.name}</h2>
                         <div className="pt-1">
@@ -116,12 +122,12 @@ export function PersonalSlip({
                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-wider text-emerald-600 shadow-sm animate-in fade-in zoom-in duration-500">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <Check size={10} strokeWidth={3} />
-                                    Đã thanh toán
+                                    {t.paid}
                                 </div>
                             ) : (
                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-100 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-600 shadow-sm">
                                     <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                    Chưa thanh toán
+                                    {t.unpaid}
                                 </div>
                             )}
                         </div>
@@ -136,7 +142,7 @@ export function PersonalSlip({
                 {/* Main Total */}
                 <div className="bg-stone-50/50 border border-stone-100 rounded-3xl p-6 text-center space-y-2 relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Tổng cộng cần thanh toán</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">{t.totalToPay}</p>
                     <div className="text-4xl font-black text-indigo-600 tracking-tighter">
                         {formatCurrency(Math.round(grandTotal))}
                     </div>
@@ -145,7 +151,7 @@ export function PersonalSlip({
                 {/* Breakdown List */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between px-2">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">Chi tiết khoản chi</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">{t.details}</h3>
                         <div className="h-px flex-1 bg-stone-100 mx-4" />
                     </div>
                     
@@ -154,7 +160,7 @@ export function PersonalSlip({
                             <div key={item.id} className="flex justify-between items-center group/item">
                                 <div className="space-y-0.5">
                                     <p className="text-sm font-bold text-stone-800 group-hover/item:text-indigo-600 transition-colors">{item.name}</p>
-                                    <p className="text-[10px] text-stone-400 font-medium">Chia {item.participantCount} người (Gốc: {formatCurrency(item.amount)})</p>
+                                    <p className="text-[10px] text-stone-400 font-medium">Chia {item.participantCount} (Gốc: {formatCurrency(item.amount)})</p>
                                 </div>
                                 <div className="text-sm font-mono font-bold text-stone-900 bg-stone-50 px-3 py-1 rounded-lg">
                                     {formatCurrency(Math.round(item.share))}
@@ -165,7 +171,7 @@ export function PersonalSlip({
                         {/* Totals Section with Deduction */}
                         <div className="pt-4 mt-2 border-t border-stone-100 space-y-2">
                              <div className="flex justify-between items-center">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Tam tính</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">{t.subtotal}</p>
                                 <p className="text-sm font-mono font-bold text-stone-600">{formatCurrency(Math.round(originalItemsTotal))}</p>
                             </div>
                             
@@ -173,7 +179,7 @@ export function PersonalSlip({
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         <TrendingDown size={12} className="text-emerald-500" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Trừ từ ủng hộ</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{t.deduction}</p>
                                     </div>
                                     <p className="text-sm font-mono font-bold text-emerald-600">-{formatCurrency(Math.round(deductionAmount))}</p>
                                 </div>
@@ -183,7 +189,7 @@ export function PersonalSlip({
                                 <div className="flex justify-between items-center pb-2 border-b border-dashed border-stone-200">
                                     <div className="flex items-center gap-2">
                                         <Heart size={12} className="text-red-500 fill-red-500/10" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-red-600">Bạn đã ủng hộ quỹ</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-red-600">{t.yourDonation}</p>
                                     </div>
                                     <p className="text-sm font-mono font-bold text-red-600">+{formatCurrency(memberDonated[member.id])}</p>
                                 </div>
@@ -197,7 +203,7 @@ export function PersonalSlip({
                     <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-5 space-y-4">
                         <div className="flex items-center gap-2">
                             <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20" />
-                            <h3 className="text-[10px] font-black text-amber-950 uppercase tracking-widest leading-none">Vinh danh đóng góp</h3>
+                            <h3 className="text-[10px] font-black text-amber-950 uppercase tracking-widest leading-none">{billT.sponsorsTitle}</h3>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {sponsors.map((sponsor, idx) => (
@@ -220,15 +226,15 @@ export function PersonalSlip({
                 <div className="pt-8 border-t border-stone-100 flex flex-col md:flex-row gap-8 items-center justify-between">
                     <div className="space-y-4 flex-1 w-full">
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Thông tin chuyển khoản</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">{t.bankInfo}</p>
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 bg-white border border-stone-200 rounded-xl flex items-center justify-center shadow-sm">
                                     <CreditCard size={18} className="text-stone-400" />
                                 </div>
                                 <div className="space-y-0.5">
-                                    <p className="text-sm font-black text-stone-900">{paymentBank || "Chưa cập nhật ngân hàng"}</p>
+                                    <p className="text-sm font-black text-stone-900">{paymentBank || t.noBankInfo}</p>
                                     <div className="flex items-center gap-2">
-                                        <p className="text-sm font-mono font-bold text-stone-500">{paymentAccount || "Chưa cập nhật STK"}</p>
+                                        <p className="text-sm font-mono font-bold text-stone-500">{paymentAccount || billT.account}</p>
                                         {paymentAccount && (
                                             <button 
                                                 onClick={handleCopy}
@@ -254,7 +260,7 @@ export function PersonalSlip({
                                 />
                                 <div className="mt-2 text-center">
                                     <span className="text-[8px] font-black uppercase tracking-widest text-stone-400 flex items-center justify-center gap-1">
-                                        <QrCode size={10} /> Quét để trả
+                                        <QrCode size={10} /> {t.scanToPay}
                                     </span>
                                 </div>
                             </div>

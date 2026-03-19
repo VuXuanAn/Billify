@@ -13,6 +13,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { billService } from "@/lib/services/billService";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 export default function GroupPage() {
   const { id } = useParams();
@@ -25,6 +27,10 @@ export default function GroupPage() {
   const [canEdit, setCanEdit] = useState(true);
   const { user } = useAuthStore();
   const router = useRouter();
+  const { language } = useLanguageStore();
+  const t = translations[language].editor;
+  const commonT = translations[language].common;
+  const billT = translations[language].billTable;
 
   // Load data from Supabase if exists
   useEffect(() => {
@@ -91,7 +97,7 @@ export default function GroupPage() {
 
   const handleGoToView = () => {
     if (!currentData) {
-      alert("Đang chuẩn bị dữ liệu, vui lòng thử lại sau!");
+      alert(commonT.loading);
       return;
     }
     router.push(`/${groupId}/view`);
@@ -102,12 +108,12 @@ export default function GroupPage() {
   }, [isPrivate, setCurrentData]);
 
   const handleDelete = async () => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa hóa đơn này không?")) {
+    if (window.confirm(t.deleteConfirm)) {
       try {
         await billService.deleteBill(groupId);
         router.push("/dashboard");
       } catch (error) {
-        alert("Không thể xóa hóa đơn. Vui lòng thử lại.");
+        alert(t.deleteError);
       }
     }
   };
@@ -116,7 +122,7 @@ export default function GroupPage() {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans tracking-tight">
         <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-        <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-widest text-center">Đang tải dữ liệu...</p>
+        <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-widest text-center">{commonT.loading}</p>
       </div>
     );
   }
@@ -131,9 +137,9 @@ export default function GroupPage() {
               <Lock className="h-8 w-8 text-amber-500" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-black text-stone-900 tracking-tight">Truy cập bị từ chối</h1>
+              <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t.accessDenied}</h1>
               <p className="text-stone-500 font-medium leading-relaxed">
-                Hóa đơn này ở chế độ riêng tư. Bạn không có quyền chỉnh sửa nội dung này.
+                {t.privateMessage}
               </p>
             </div>
             <div className="pt-2 flex flex-col gap-3">

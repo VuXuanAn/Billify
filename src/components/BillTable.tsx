@@ -89,6 +89,8 @@ import { IMaskInput } from "react-imask";
 import { VIETNAMESE_BANKS } from "@/lib/constants/banks";
 import { billService } from "@/lib/services/billService";
 import { QRUploadArea } from "./QRUploadArea";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { translations } from "@/lib/translations";
 
 interface Member {
     id: string;
@@ -145,15 +147,20 @@ export function BillTable({
     handleGoToView,
     onDelete
 }: BillTableProps) {
-    const [groupName, setGroupName] = useState(initialData?.groupName || "Chuyến đi tuyệt vời");
+    const { language } = useLanguageStore();
+    const t = translations[language].billTable;
+    const commonT = translations[language].common;
+    const editorT = translations[language].editor;
+
+    const [groupName, setGroupName] = useState(initialData?.groupName || "");
     const [paymentBank, setPaymentBank] = useState(initialData?.paymentBank || "");
     const [paymentAccount, setPaymentAccount] = useState(initialData?.paymentAccount || "");
     const [paymentQR, setPaymentQR] = useState(initialData?.paymentQR || "");
     const [members, setMembers] = useState<Member[]>(initialData?.members || [
-        { id: "m1", name: "Thành viên 1" },
+        { id: "m1", name: `${t.members} 1` },
     ]);
     const [items, setItems] = useState<Item[]>(initialData?.items || [
-        { id: "i1", name: "Danh mục 1", amount: 100000 },
+        { id: "i1", name: `${t.category} 1`, amount: 100000 },
     ]);
     const [donations, setDonations] = useState<Donation[]>(initialData?.donations || []);
     const [participation, setParticipation] = useState<Record<string, Record<string, boolean>>>(
@@ -310,14 +317,15 @@ export function BillTable({
         });
 
         if (!code) {
-            toast.warning("Không tìm thấy mã QR", {
-                description: "Vùng đã cắt có vẻ không chứa mã QR hợp lệ. Bạn có muốn tiếp tục tải lên không?",
+            toast.warning(t.noQRFound, {
+                description: t.noQRDescription,
                 action: {
-                    label: "Tiếp tục",
+                    label: commonT.confirm,
                     onClick: () => proceedWithUpload(canvas)
                 },
                 cancel: {
-                    label: "Hủy"
+                    label: commonT.cancel,
+                    onClick: () => {}
                 }
             });
             return;
@@ -624,14 +632,14 @@ export function BillTable({
                     {/* Left: Group Name with Popover Edit */}
                     <div className="flex-1 min-w-0">
                         {isReadOnly ? (
-                            <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-stone-900 leading-[0.8]">
+                            <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-primary leading-[0.8]">
                                 {groupName || "Tên nhóm..."}
                             </h1>
                         ) : (
                             <Popover>
                                 <PopoverTrigger>
                                     <div className="group/name cursor-pointer inline-flex items-center gap-6">
-                                        <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-stone-900 leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
+                                        <h1 className="text-6xl md:text-7xl lg:text-6xl font-black tracking-tighter text-primary leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
                                             {groupName || "Tên nhóm..."}
                                         </h1>
                                         <div className="h-12 w-12 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-400 group-hover/name:bg-indigo-50 group-hover/name:border-indigo-200 group-hover/name:text-indigo-600 transition-all shadow-sm">
@@ -804,13 +812,13 @@ export function BillTable({
                             onClick={openAddMemberDialog}
                             className="border-stone-100 text-stone-700 hover:bg-stone-50 hover:bg-stone-100 font-bold rounded-lg h-10 px-4 transition-none"
                         >
-                            <UserPlus className="h-4 w-4 mr-2" /> Thêm người
+                            <UserPlus className="h-4 w-4 mr-2" /> {t.addMember}
                         </Button>
                         <Button
                             onClick={openAddCategoryDialog}
                             className="bg-white text-stone-900 border border-stone-100 hover:bg-slate-200/90 font-bold rounded-lg h-10 px-4 transition-none"
                         >
-                            <Plus className="h-4 w-4 mr-2" /> Khoản chi
+                            <Plus className="h-4 w-4 mr-2" /> {t.addItem}
                         </Button>
                     </div>
 
@@ -828,7 +836,7 @@ export function BillTable({
                                 />
                                 <Label htmlFor="isPrivate-table" className="text-[10px] font-black uppercase tracking-widest text-stone-500 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
                                     {isPrivate ? <Lock size={12} className="text-amber-500" /> : <Unlock size={12} className="text-stone-400" />}
-                                    Riêng tư
+                                    {isPrivate ? t.privateMode : t.publicMode}
                                 </Label>
                             </div>
                         )}
@@ -841,7 +849,7 @@ export function BillTable({
                                 className="border-stone-100 text-stone-700 hover:bg-stone-50 font-bold h-10 px-4 rounded-lg flex items-center gap-2"
                             >
                                 <Eye className="h-4 w-4" />
-                                <span className="text-[10px] uppercase tracking-widest font-black whitespace-nowrap">Bản in & Chia sẻ</span>
+                                <span className="text-[10px] uppercase tracking-widest font-black whitespace-nowrap">{commonT.view}</span>
                             </Button>
                         )}
 
@@ -850,7 +858,7 @@ export function BillTable({
                                 variant="ghost"
                                 onClick={onDelete}
                                 className="text-stone-300 hover:text-red-500 hover:bg-red-50 font-bold rounded-lg h-10 px-3 flex items-center shadow-none"
-                                title="Xóa toàn bộ hóa đơn"
+                                title={editorT.deleteConfirm}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
@@ -876,7 +884,7 @@ export function BillTable({
                                     <Save className="h-4 w-4" />
                                 )}
                                 <span className="text-[10px] uppercase tracking-widest font-black">
-                                    {saveStatus === "saving" ? "Đang lưu" : saveStatus === "success" ? "Đã lưu" : saveStatus === "error" ? "Lỗi" : "Lưu"}
+                                    {saveStatus === "saving" ? commonT.saving : saveStatus === "success" ? commonT.saved : saveStatus === "error" ? commonT.error : commonT.save}
                                 </span>
                             </Button>
                         )}
@@ -897,10 +905,10 @@ export function BillTable({
                                         </svg>
                                     </div>
                                     <div className="absolute top-4 right-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
-                                        Danh mục
+                                        {t.category}
                                     </div>
                                     <div className="absolute bottom-4 left-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
-                                        Thành viên
+                                        {t.members}
                                     </div>
                                 </TableHead>
                                 {items.map(item => (
@@ -1016,7 +1024,7 @@ export function BillTable({
 
                                                         {isReadOnly ? (
                                                             <span className={`text-[10px] font-bold ${isParticipating ? 'text-indigo-600' : 'text-stone-300 italic'}`}>
-                                                                {isParticipating ? formatCurrency(stats.itemSplits[item.id]) : "không sử dụng"}
+                                                                {isParticipating ? formatCurrency(stats.itemSplits[item.id]) : ""}
                                                             </span>
                                                         ) : (
                                                             <span className={`text-[10px] font-medium ${isParticipating ? 'text-indigo-600' : 'text-stone-300'}`}>
@@ -1038,7 +1046,7 @@ export function BillTable({
                                                         </TooltipTrigger>
                                                         <TooltipContent side="top" className="p-3 border-stone-200 shadow-xl bg-white/95 backdrop-blur-md">
                                                             <div className="space-y-3 min-w-[200px]">
-                                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Chi tiết tham gia</p>
+                                                                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{translations[language].personalSlip.details}</p>
 
                                                                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                                                     {items.map(item => {
@@ -1054,7 +1062,7 @@ export function BillTable({
 
                                                                 <div className="pt-2 border-t border-stone-100 space-y-2">
                                                                     <div className="flex justify-between items-center gap-4 text-xs font-bold">
-                                                                        <span className="text-stone-500">Tổng món ăn:</span>
+                                                                        <span className="text-stone-500">{translations[language].personalSlip.subtotal}:</span>
                                                                         <span className="font-mono">{formatCurrency(items.reduce((acc, item) =>
                                                                             participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
                                                                         ))}</span>
@@ -1063,13 +1071,13 @@ export function BillTable({
                                                                     {stats.reductionRatio < 1 && (
                                                                         <>
                                                                             <div className="flex justify-between items-center gap-4 text-xs font-medium">
-                                                                                <span className="text-stone-500 italic">Chiết khấu ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
+                                                                                <span className="text-stone-500 italic">{translations[language].personalSlip.deduction} ({Math.round((1 - stats.reductionRatio) * 100)}%):</span>
                                                                                 <span className="text-indigo-500 font-mono">-{formatCurrency(items.reduce((acc, item) =>
                                                                                     participation[member.id]?.[item.id] ? acc + stats.itemSplits[item.id] : acc, 0
                                                                                 ) * (1 - stats.reductionRatio))}</span>
                                                                             </div>
                                                                             <div className="flex justify-between items-center gap-4 text-sm font-black pt-1 border-t border-stone-100">
-                                                                                <span className="text-stone-900">Cần đóng:</span>
+                                                                                <span className="text-stone-900">{t.debt}:</span>
                                                                                 <span className="text-stone-900 font-mono">{formatCurrency(stats.memberShares[member.id])}</span>
                                                                             </div>
                                                                         </>
@@ -1107,14 +1115,14 @@ export function BillTable({
             <Dialog open={isMemDialogOpen} onOpenChange={setIsMemDialogOpen}>
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">Thêm thành viên</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">{t.addMember}</DialogTitle>
                         <DialogDescription className="text-stone-300 text-sm">
-                            Thêm người mới vào nhóm của bạn
+                            {t.addMember}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-stone-300 uppercase">Tên hiển thị</Label>
+                            <Label className="text-xs font-bold text-stone-300 uppercase">{t.members}</Label>
                             <Input
                                 value={newMemberName}
                                 onChange={(e) => setNewMemberName(e.target.value)}
@@ -1123,7 +1131,7 @@ export function BillTable({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-stone-300 uppercase">Tham gia khoản chi</Label>
+                            <Label className="text-xs font-bold text-stone-300 uppercase">{t.category}</Label>
                             <ScrollArea className="h-[200px] rounded-lg border border-stone-200 p-2">
                                 <div className="space-y-1">
                                     {items.map(item => (
@@ -1144,7 +1152,7 @@ export function BillTable({
                         </div>
                     </div>
                     <DialogFooter className="pt-4">
-                        <Button onClick={handleAddMember} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 text-stone-900 text-stone-900 font-bold rounded-lg h-10 transition-none">Thêm thành viên</Button>
+                        <Button onClick={handleAddMember} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 text-stone-900 text-stone-900 font-bold rounded-lg h-10 transition-none">{t.addMember}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1152,15 +1160,15 @@ export function BillTable({
             <Dialog open={isCatDialogOpen} onOpenChange={setIsCatDialogOpen}>
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">Khoản chi mới</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">{t.addItem}</DialogTitle>
                         <DialogDescription className="text-stone-300 text-sm">
-                            Nhập chi tiết khoản chi và người tham gia
+                            {t.addItem}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-stone-300 uppercase">Tên khoản chi</Label>
+                                <Label className="text-xs font-bold text-stone-300 uppercase">{t.category}</Label>
                                 <Input
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
@@ -1169,7 +1177,7 @@ export function BillTable({
                                 />
                             </div>
                             <div className="space-y-3">
-                                <Label className="text-xs font-bold text-stone-300 uppercase">Giá trị (VNĐ)</Label>
+                                <Label className="text-xs font-bold text-stone-300 uppercase">{t.amount} (VNĐ)</Label>
                                 <div className="space-y-3">
                                     <div className="relative">
                                         <Input
@@ -1196,7 +1204,7 @@ export function BillTable({
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-stone-300 uppercase">Người tham gia chia sẻ</Label>
+                            <Label className="text-xs font-bold text-stone-300 uppercase">{t.members}</Label>
                             <ScrollArea className="h-[180px] rounded-lg border border-stone-200 p-2">
                                 <div className="space-y-1">
                                     {members.map(member => (
@@ -1219,7 +1227,7 @@ export function BillTable({
                         </div>
                     </div>
                     <DialogFooter className="pt-4">
-                        <Button onClick={handleAddCategory} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 text-stone-900 text-stone-900 font-bold rounded-lg h-10 transition-none">Lưu khoản chi</Button>
+                        <Button onClick={handleAddCategory} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 text-stone-900 text-stone-900 font-bold rounded-lg h-10 transition-none">{commonT.save}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1229,18 +1237,18 @@ export function BillTable({
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            <Crown className="h-5 w-5 text-amber-500" /> Ủng hộ
+                            <Crown className="h-5 w-5 text-amber-500" /> {t.addDonation}
                         </DialogTitle>
                         <DialogDescription className="text-stone-500 text-sm">
-                            Ghi nhận khoản tiền một thành viên đã đóng góp vào quỹ chung.
+                            {t.addDonation}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-stone-300 uppercase">Người ủng hộ</Label>
+                            <Label className="text-xs font-bold text-stone-300 uppercase">{t.members}</Label>
                             <Select value={newDonationMemberId} onValueChange={(val) => setNewDonationMemberId(val || "")}>
                                 <SelectTrigger className="w-full rounded-lg border-stone-200 h-10 px-3 font-semibold text-stone-700">
-                                    <SelectValue placeholder="Chọn người ủng hộ...">
+                                    <SelectValue placeholder={t.sponsorsSubtitle}>
                                         {members.find(m => m.id === newDonationMemberId)?.name}
                                     </SelectValue>
                                 </SelectTrigger>
@@ -1280,7 +1288,7 @@ export function BillTable({
                         </div>
                     </div>
                     <DialogFooter className="pt-4">
-                        <Button onClick={handleAddDonation} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 font-bold rounded-lg h-10 transition-none">Xác nhận</Button>
+                        <Button onClick={handleAddDonation} className="w-full bg-white text-stone-900 hover:bg-slate-200/90 font-bold rounded-lg h-10 transition-none">{commonT.confirm}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1289,9 +1297,9 @@ export function BillTable({
             <Dialog open={isCropperOpen} onOpenChange={setIsCropperOpen}>
                 <DialogContent className="rounded-xl border-stone-200 shadow-lg sm:max-w-md p-6 bg-white">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">Cắt mã QR</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">{t.qrCode}</DialogTitle>
                         <DialogDescription className="text-stone-500 text-sm">
-                            Điều chỉnh vùng chứa mã QR để ứng dụng nhận diện tốt hơn.
+                            {t.qrAndPayment}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center p-2 bg-stone-50 rounded-xl border border-dashed border-stone-200 mt-4 overflow-auto max-h-[450px]">
@@ -1315,7 +1323,7 @@ export function BillTable({
                         ) : (
                             <div className="flex flex-col items-center gap-2 py-12">
                                 <Loader2 className="h-8 w-8 text-stone-300 animate-spin" />
-                                <p className="text-xs text-stone-400 font-bold">Đang tải hình ảnh...</p>
+                                <p className="text-xs text-stone-400 font-bold">{commonT.loading}</p>
                             </div>
                         )}
                     </div>
@@ -1325,7 +1333,7 @@ export function BillTable({
                             onClick={() => setIsCropperOpen(false)}
                             className="flex-1 font-bold border-stone-200 h-10 rounded-lg hover:bg-stone-50"
                         >
-                            Hủy
+                            {commonT.cancel}
                         </Button>
                         <Button
                             onClick={handleCropComplete}
@@ -1335,10 +1343,10 @@ export function BillTable({
                             {isUploadingQR ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Đang tải...
+                                    {commonT.saving}
                                 </>
                             ) : (
-                                "Hoàn tất & Tải lên"
+                                commonT.confirm
                             )}
                         </Button>
                     </DialogFooter>
@@ -1354,8 +1362,8 @@ export function BillTable({
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h2 className="text-2xl font-black text-stone-900 tracking-tight">Mã QR Thanh toán</h2>
-                                        <p className="text-sm font-semibold text-stone-500 mt-1">Quét mã để hoàn tất thanh toán.</p>
+                                        <h2 className="text-2xl font-black text-stone-900 tracking-tight">{t.qrCode}</h2>
+                                        <p className="text-sm font-semibold text-stone-500 mt-1">{t.qrAndPayment}</p>
                                     </div>
                                     <div className="p-3 bg-indigo-50 rounded-2xl">
                                         <Sparkles className="h-6 w-6 text-indigo-600" />
@@ -1375,14 +1383,14 @@ export function BillTable({
                                         onClick={handleDownloadQR}
                                         className="bg-stone-900 hover:bg-stone-800 text-white font-bold h-12 rounded-xl shadow-lg transition-all"
                                     >
-                                        <Download className="h-4 w-4 mr-2" /> Tải xuống
+                                        <Download className="h-4 w-4 mr-2" /> {commonT.download}
                                     </Button>
                                     <Button
                                         variant="outline"
                                         onClick={() => setIsQRZoomOpen(false)}
                                         className="border-stone-200 text-stone-600 hover:bg-stone-50 font-bold h-12 rounded-xl"
                                     >
-                                        Đóng
+                                        {commonT.close}
                                     </Button>
                                 </div>
                             </div>
