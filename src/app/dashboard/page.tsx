@@ -172,47 +172,48 @@ export default function DashboardPage() {
                       <Link
                         key={bill.id}
                         href={`/${bill.id}`}
-                        className="group bg-white border border-stone-100 rounded-[2rem] p-8 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between min-h-[220px] relative overflow-hidden"
+                        className="group relative bg-white border border-stone-200 rounded-3xl p-6 hover:border-indigo-300 shadow-sm hover:shadow-[0_8px_30px_rgb(79,70,229,0.1)] hover:-translate-y-1 transition-all duration-400 flex flex-col min-h-[220px] overflow-hidden"
                       >
-                        {/* Decorative background element */}
-                        <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50/50 rounded-full blur-2xl group-hover:bg-indigo-100 transition-colors duration-500" />
+                        {/* Interactive Accent Line */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-stone-100 group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:to-cyan-400 transition-all duration-500" />
 
-                        <div className="space-y-4 relative z-10">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1.5 text-stone-400 font-bold text-[10px] uppercase tracking-widest">
-                              <Calendar size={12} className="text-indigo-500" />
-                              <span>{new Date(bill.updated_at || bill.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit' })}</span>
-                            </div>
-                            <button
-                              onClick={(e) => handleDelete(e, bill.id)}
-                              className="p-2.5 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100"
-                              title="Xóa hóa đơn"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-
-                          <h3 className="text-2xl font-black text-stone-900 leading-tight line-clamp-2 group-hover:text-indigo-600 transition-colors duration-300">
-                            {bill.name || (language === 'vi' ? "Hóa đơn không tên" : "Untitled Bill")}
-                          </h3>
+                        {/* Top: Date & Action */}
+                        <div className="flex justify-between items-start mb-4 mt-1">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-50 border border-stone-100 text-[10px] font-black uppercase tracking-widest text-stone-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
+                            <Calendar size={12} />
+                            {new Date(bill.updated_at || bill.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                          <button
+                            onClick={(e) => handleDelete(e, bill.id)}
+                            className="p-2 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                            title="Xóa hóa đơn"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
 
-                        <div className="pt-6 mt-6 border-t border-stone-50 flex flex-col gap-4 relative z-10">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-50 rounded-lg group-hover:bg-indigo-50 transition-colors">
-                                <Users size={14} className="text-stone-400 group-hover:text-indigo-500" />
-                                <span className="text-xs font-bold text-stone-600">{memberCount} {t.participants}</span>
-                              </div>
-                            </div>
-                            <div className="w-10 h-10 rounded-2xl bg-stone-50 flex items-center justify-center text-stone-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:rotate-45 transition-all duration-500">
-                              <ChevronRight size={20} />
-                            </div>
+                        {/* Title */}
+                        <h3 className="text-xl font-bold text-stone-800 leading-snug line-clamp-2 mb-auto group-hover:text-stone-950 transition-colors">
+                          {bill.name || (language === 'vi' ? "Hóa đơn không tên" : "Untitled Bill")}
+                        </h3>
+
+                        {/* Bottom: Total & Members */}
+                        <div className="mt-8 pt-5 border-t border-dashed border-stone-200 flex items-end justify-between">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">{t.totalAmount}</p>
+                            <p className="text-2xl font-black text-stone-900 group-hover:text-indigo-600 transition-colors">
+                              {formatCurrency(totalAmount)}
+                            </p>
                           </div>
 
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-stone-400">{t.totalAmount}</p>
-                            <p className="text-xl font-black text-stone-900 group-hover:text-indigo-600 transition-colors">{formatCurrency(totalAmount)}</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-stone-500 font-bold text-xs bg-stone-50 px-2.5 py-1.5 rounded-lg border border-stone-100 group-hover:border-indigo-100 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                              <Users size={14} />
+                              <span>{memberCount}</span>
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-stone-50 text-stone-400 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white border border-stone-100 group-hover:border-indigo-600 transition-all transform group-hover:translate-x-1">
+                              <ChevronRight size={16} />
+                            </div>
                           </div>
                         </div>
                       </Link>

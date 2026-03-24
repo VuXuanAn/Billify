@@ -73,9 +73,13 @@ export default function DynamicViewPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans tracking-tight">
-                <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-[0.2em] text-center">{commonT.loading}</p>
+            <div className="min-h-screen bg-stone-50 flex flex-col font-sans tracking-tight">
+                <Header />
+                <main className="flex-1 flex flex-col items-center justify-center p-6 bg-stone-50">
+                    <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
+                    <p className="mt-4 text-stone-500 font-black uppercase text-[10px] tracking-[0.2em] text-center">{commonT.loading}</p>
+                </main>
+                <Footer />
             </div>
         );
     }

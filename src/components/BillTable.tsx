@@ -650,7 +650,7 @@ export function BillTable({
                                         <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter text-primary leading-[0.9] sm:leading-[0.8] group-hover/name:text-indigo-600 transition-colors">
                                             {groupName || "Tên nhóm..."}
                                         </h1>
-                                        <div className="h-12 w-12 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-400 group-hover/name:bg-indigo-50 group-hover/name:border-indigo-200 group-hover/name:text-indigo-600 transition-all shadow-sm">
+                                        <div className="h-12 w-12 rounded-full bg-stone-50 flex-shrink-0 border border-stone-200 flex items-center justify-center text-stone-400 group-hover/name:bg-indigo-50 group-hover/name:border-indigo-200 group-hover/name:text-indigo-600 transition-all shadow-sm">
                                             <Edit3 className="h-5 w-5" />
                                         </div>
                                     </div>
@@ -919,10 +919,10 @@ export function BillTable({
                                                 <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1" />
                                             </svg>
                                         </div>
-                                        <div className="absolute top-4 right-3 sm:right-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
+                                        <div className="absolute top-4 right-3 sm:right-6 text-[10px] font-black  tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
                                             {t.category}
                                         </div>
-                                        <div className="absolute bottom-4 left-3 sm:left-6 text-[10px] font-black uppercase tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
+                                        <div className="absolute bottom-4 left-3 sm:left-6 text-[10px] font-black  tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
                                             {t.members}
                                         </div>
                                     </TableHead>

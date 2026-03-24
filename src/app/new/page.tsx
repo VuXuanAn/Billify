@@ -17,7 +17,7 @@ export default function NewBillPage() {
   const { language } = useLanguageStore();
   const t = translations[language].newBill;
   const commonT = translations[language].common;
-  
+
   const [groupName, setGroupNameLocal] = useState("");
   const [setupMembers, setSetupMembersLocal] = useState<string[]>([]);
   const [newMemberName, setNewMemberName] = useState("");
@@ -25,16 +25,16 @@ export default function NewBillPage() {
 
   const handleCreate = () => {
     if (!groupName || setupMembers.length === 0) return;
-    
+
     setIsCreating(true);
-    
+
     // 1. Generate local UUID
     const id = crypto.randomUUID();
-    
+
     // 2. Set the global store state to pass to the editor
     setGroupName(groupName);
     setSetupMembers(setupMembers);
-    
+
     // 3. Navigate to the editor
     router.push(`/${id}`);
   };
@@ -49,62 +49,72 @@ export default function NewBillPage() {
               <h2 className="text-2xl font-black text-stone-900 tracking-tight">{t.title}</h2>
               <p className="text-sm text-stone-500 font-medium leading-relaxed">{t.description}</p>
             </div>
-            
+
             <div className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5 pt-2">
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">{t.groupNameLabel}</label>
                 <Input
                   autoFocus
                   disabled={isCreating}
+                  maxLength={50}
                   value={groupName}
                   onChange={(e) => setGroupNameLocal(e.target.value)}
                   placeholder={t.groupNamePlaceholder}
                   className="h-12 text-base font-medium rounded-lg border-stone-300 bg-white focus-visible:ring-blue-500 placeholder:text-stone-400"
                 />
+                <div className="text-right text-[10px] font-bold text-stone-400 mt-1">
+                  {groupName.length}/50
+                </div>
               </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">{translations[language].billTable.members}</label>
-                
-                <div className="relative">
-                  <Input
-                    disabled={isCreating}
-                    value={newMemberName}
-                    onChange={(e) => setNewMemberName(e.target.value)}
-                    placeholder={t.membersPlaceholder}
-                    className="h-12 pl-4 pr-14 text-base font-medium rounded-xl border-stone-200 bg-stone-50/50 focus-visible:ring-blue-500 focus-visible:border-blue-500 focus-visible:bg-white placeholder:text-stone-400 transition-all shadow-sm"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newMemberName.trim()) {
-                        e.preventDefault();
-                        if (!setupMembers.includes(newMemberName.trim())) {
-                          setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
+
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Input
+                      disabled={isCreating}
+                      maxLength={20}
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      placeholder={t.membersPlaceholder}
+                      className="h-12 pl-4 pr-14 text-base font-medium rounded-xl border-stone-200 bg-stone-50/50 focus-visible:ring-blue-500 focus-visible:border-blue-500 focus-visible:bg-white placeholder:text-stone-400 transition-all shadow-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newMemberName.trim()) {
+                          e.preventDefault();
+                          if (!setupMembers.includes(newMemberName.trim())) {
+                            setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
+                          }
+                          setNewMemberName("");
                         }
-                        setNewMemberName("");
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    disabled={isCreating || !newMemberName.trim()}
-                    onClick={() => {
-                      if (newMemberName.trim() && !setupMembers.includes(newMemberName.trim())) {
-                        setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
-                        setNewMemberName("");
-                      }
-                    }}
-                    className="absolute right-1 top-1 h-10 w-10 p-0 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-stone-100 disabled:text-stone-300 transition-colors"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      disabled={isCreating || !newMemberName.trim()}
+                      onClick={() => {
+                        if (newMemberName.trim() && !setupMembers.includes(newMemberName.trim())) {
+                          setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
+                          setNewMemberName("");
+                        }
+                      }}
+                      className="absolute right-1 top-1 h-10 w-10 p-0 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-stone-100 disabled:text-stone-300 transition-colors"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  <div className="text-right text-[10px] font-bold text-stone-400">
+                    {newMemberName.length}/20
+                  </div>
                 </div>
 
                 {setupMembers.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-3">
                     {setupMembers.map((member, idx) => (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-white border border-stone-200 shadow-sm rounded-full text-sm font-semibold text-stone-700 animate-in fade-in zoom-in-95 duration-200"
                       >
                         <span className="max-w-[140px] truncate">{member}</span>
