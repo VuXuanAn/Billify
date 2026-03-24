@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
@@ -66,56 +66,58 @@ export default function NewBillPage() {
               <div className="space-y-3 pt-2">
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">{translations[language].billTable.members}</label>
                 
-                <div className="flex gap-2">
+                <div className="relative">
                   <Input
                     disabled={isCreating}
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
                     placeholder={t.membersPlaceholder}
-                    className="h-10 text-sm font-medium rounded-lg border-stone-300 focus-visible:ring-blue-500 placeholder:text-stone-400"
+                    className="h-12 pl-4 pr-14 text-base font-medium rounded-xl border-stone-200 bg-stone-50/50 focus-visible:ring-blue-500 focus-visible:border-blue-500 focus-visible:bg-white placeholder:text-stone-400 transition-all shadow-sm"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && newMemberName.trim()) {
                         e.preventDefault();
-                        setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
+                        if (!setupMembers.includes(newMemberName.trim())) {
+                          setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
+                        }
                         setNewMemberName("");
                       }
                     }}
                   />
                   <Button
-                    variant="secondary"
+                    variant="ghost"
+                    size="sm"
                     type="button"
                     disabled={isCreating || !newMemberName.trim()}
                     onClick={() => {
-                      if (newMemberName.trim()) {
+                      if (newMemberName.trim() && !setupMembers.includes(newMemberName.trim())) {
                         setSetupMembersLocal([...setupMembers, newMemberName.trim()]);
                         setNewMemberName("");
                       }
                     }}
-                    className="h-10 px-4 whitespace-nowrap font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 border-none shadow-none"
+                    className="absolute right-1 top-1 h-10 w-10 p-0 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-stone-100 disabled:text-stone-300 transition-colors"
                   >
-                    {translations[language].billTable.addMember}
+                    <Plus className="h-5 w-5" />
                   </Button>
                 </div>
 
                 {setupMembers.length > 0 && (
-                  <div className="flex flex-wrap gap-4 py-2 mt-2">
+                  <div className="flex flex-wrap gap-2 pt-3">
                     {setupMembers.map((member, idx) => (
-                      <div key={idx} className="flex flex-col items-center gap-1.5 w-14 animate-in fade-in zoom-in duration-300">
-                        <div className="relative">
-                          <div className="h-12 w-12 bg-blue-50 text-blue-700 border-2 border-white shadow-sm rounded-full flex items-center justify-center font-bold text-sm">
-                            {member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                          </div>
-                          {!isCreating && (
-                            <button
-                              onClick={() => setSetupMembersLocal(setupMembers.filter((_, i) => i !== idx))}
-                              className="absolute -top-1 -right-1 bg-red-100 text-red-600 rounded-full h-5 w-5 flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors border-2 border-white shadow-sm"
-                              title={translations[language].billTable.deleteMember}
-                            >
-                              &times;
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-bold text-stone-600 truncate w-full text-center">{member}</span>
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-white border border-stone-200 shadow-sm rounded-full text-sm font-semibold text-stone-700 animate-in fade-in zoom-in-95 duration-200"
+                      >
+                        <span className="max-w-[140px] truncate">{member}</span>
+                        {!isCreating && (
+                          <button
+                            type="button"
+                            onClick={() => setSetupMembersLocal(setupMembers.filter((_, i) => i !== idx))}
+                            className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+                            title={translations[language].billTable.deleteMember}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

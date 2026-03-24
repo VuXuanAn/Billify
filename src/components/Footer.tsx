@@ -18,7 +18,7 @@ export function Footer() {
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
         {/* Main Footer Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          
+
           {/* Brand Section */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center gap-2 group">
@@ -69,13 +69,13 @@ export function Footer() {
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-stone-900">{t.newsletter}</h4>
             <div className="space-y-4">
               <p className="text-stone-500 text-sm font-medium leading-relaxed">
-                {language === 'vi' 
-                  ? "Nhận thông tin cập nhật mới nhất về các tính năng và ưu đãi." 
+                {language === 'vi'
+                  ? "Nhận thông tin cập nhật mới nhất về các tính năng và ưu đãi."
                   : "Get the latest updates on features and offers."}
               </p>
               <div className="flex gap-2 p-1.5 bg-stone-50 rounded-2xl border border-stone-100 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                <Input 
-                  placeholder={t.newsletterPlaceholder} 
+                <Input
+                  placeholder={t.newsletterPlaceholder}
                   className="bg-transparent border-none shadow-none focus-visible:ring-0 text-sm font-medium placeholder:text-stone-400 placeholder:font-normal"
                 />
                 <Button size="icon" className="bg-stone-900 hover:bg-stone-800 rounded-xl shrink-0">
@@ -86,24 +86,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-stone-100 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs font-black text-stone-400 uppercase tracking-widest">
-            {commonT.copyright}
-          </p>
-          
-          <div className="flex items-center gap-4">
-            <a 
-              href="https://ko-fi.com/vuxuanan14798" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-            >
-              <Heart size={14} className="fill-current group-hover:scale-110 transition-transform" />
-              <span>{commonT.supportOnKofi}</span>
-            </a>
-          </div>
-        </div>
+
       </div>
     </footer>
   );

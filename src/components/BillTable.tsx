@@ -1042,7 +1042,7 @@ export function BillTable({
                                                 <div className="flex flex-col items-center">
                                                     <TooltipProvider>
                                                         <Tooltip>
-                                                            <TooltipTrigger asChild>
+                                                            <TooltipTrigger>
                                                                 <p className="text-xs font-bold text-stone-900 bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-md border border-stone-200 cursor-help">
                                                                     <span className="font-mono tracking-tighter">{formatCurrency(stats.memberShares[member.id])}</span>
                                                                 </p>
@@ -1220,7 +1220,7 @@ export function BillTable({
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-sm text-stone-900">{item.name}</p>
-                                                    <p className="text-[10px] font-black text-stone-400 tracking-tighter uppercase">{formatCurrency(item.amount)} • {participantCount} {commonT.participants}</p>
+                                                    <p className="text-[10px] font-black text-stone-400 tracking-tighter uppercase">{formatCurrency(item.amount)} • {participantCount} {t.members.toLowerCase()}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
