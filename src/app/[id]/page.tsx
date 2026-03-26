@@ -23,7 +23,6 @@ export default function GroupPage() {
   const { groupName, setGroupName, setupMembers, setSetupMembers, currentData, setCurrentData } = useBillStore();
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [isLoading, setIsLoading] = useState(true);
-  const [isPrivate, setIsPrivate] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
   const { user } = useAuthStore();
   const router = useRouter();
@@ -43,13 +42,11 @@ export default function GroupPage() {
         const data = await billService.getBill(groupId);
         if (data) {
           setGroupName(data.groupName);
-          setIsPrivate(data.isPrivate || false);
           setCurrentData(data);
 
           // Ownership Check
           const isOwner = data.userId === user?.id;
-          const isPublic = !data.isPrivate;
-          setCanEdit(isPublic || isOwner);
+          setCanEdit(isOwner);
         } else {
           // Data is null - check if we have it in the local store (newly created FE-only)
           if (groupName && setupMembers.length > 0) {
@@ -85,7 +82,7 @@ export default function GroupPage() {
     if (!groupId || !currentData) return;
     setSaveStatus("saving");
     try {
-      await billService.saveBill(groupId, { ...currentData, isPrivate }, user?.id);
+      await billService.saveBill(groupId, { ...currentData }, user?.id);
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
@@ -104,17 +101,15 @@ export default function GroupPage() {
   };
 
   const handleDataChange = useCallback((newData: any) => {
-    setCurrentData({ ...newData, isPrivate });
-  }, [isPrivate, setCurrentData]);
+    setCurrentData({ ...newData });
+  }, [setCurrentData]);
 
   const handleDelete = async () => {
-    if (window.confirm(t.deleteConfirm)) {
-      try {
-        await billService.deleteBill(groupId);
-        router.push("/dashboard");
-      } catch (error) {
-        alert(t.deleteError);
-      }
+    try {
+      await billService.deleteBill(groupId);
+      router.push("/dashboard");
+    } catch (error) {
+      alert(t.deleteError);
     }
   };
 
@@ -183,8 +178,6 @@ export default function GroupPage() {
               participation: {}
             }}
             onDataChange={handleDataChange}
-            isPrivate={isPrivate}
-            setIsPrivate={setIsPrivate}
             saveStatus={saveStatus}
             handleSave={handleSave}
             handleGoToView={handleGoToView}
