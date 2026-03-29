@@ -656,11 +656,9 @@ export function BillTable({
                                 <div className="inline-flex items-center self-start bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
                                     {/* Edit name */}
                                     <Popover>
-                                        <PopoverTrigger asChild>
-                                            <button className="cursor-pointer flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest group/edit">
-                                                <Edit3 className="h-3.5 w-3.5" />
-                                                <span>Sửa tên</span>
-                                            </button>
+                                        <PopoverTrigger className="cursor-pointer flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest group/edit">
+                                            <Edit3 className="h-3.5 w-3.5" />
+                                            <span>Sửa tên</span>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-80 p-4 shadow-2xl border-indigo-100 rounded-2xl" align="start">
                                             <div className="space-y-4">
