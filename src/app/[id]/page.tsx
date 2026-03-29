@@ -78,19 +78,28 @@ export default function GroupPage() {
 
 
 
-  const handleSave = async () => {
-    if (!groupId || !currentData) return;
-    setSaveStatus("saving");
-    try {
-      await billService.saveBill(groupId, { ...currentData }, user?.id);
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (error) {
-      console.error("Save failed:", error);
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 5000);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDataChange = useCallback((newData: any) => {
+    setCurrentData({ ...newData });
+    
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
-  };
+    
+    setSaveStatus("saving");
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        await billService.saveBill(groupId, { ...newData }, user?.id);
+        setSaveStatus("success");
+        setTimeout(() => setSaveStatus("idle"), 3000);
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus("idle"), 5000);
+      }
+    }, 1500);
+  }, [setCurrentData, groupId, user?.id]);
 
   const handleGoToView = () => {
     if (!currentData) {
@@ -99,10 +108,6 @@ export default function GroupPage() {
     }
     router.push(`/${groupId}/view`);
   };
-
-  const handleDataChange = useCallback((newData: any) => {
-    setCurrentData({ ...newData });
-  }, [setCurrentData]);
 
   const handleDelete = async () => {
     try {
@@ -179,7 +184,6 @@ export default function GroupPage() {
             }}
             onDataChange={handleDataChange}
             saveStatus={saveStatus}
-            handleSave={handleSave}
             handleGoToView={handleGoToView}
             onDelete={handleDelete}
           />

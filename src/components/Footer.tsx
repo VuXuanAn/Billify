@@ -37,7 +37,7 @@ export function Footer() {
               <a href="#" className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:bg-stone-900 hover:text-white transition-all">
                 <Github size={18} />
               </a>
-              <a href="mailto:contact@billify.com" className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
+              <a href="mailto:vuxuanan14798@gmail.com?subject=Billify Feedback" className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:bg-pink-50 hover:text-pink-600 transition-all" title="Góp ý cho Billify">
                 <Mail size={18} />
               </a>
             </div>
@@ -64,24 +64,24 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter Section */}
+          {/* Feedback Section */}
           <div className="space-y-6">
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-stone-900">{t.newsletter}</h4>
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-stone-900">
+              {language === 'vi' ? 'Góp ý' : 'Feedback'}
+            </h4>
             <div className="space-y-4">
               <p className="text-stone-500 text-sm font-medium leading-relaxed">
                 {language === 'vi'
-                  ? "Nhận thông tin cập nhật mới nhất về các tính năng và ưu đãi."
-                  : "Get the latest updates on features and offers."}
+                  ? "Billify đang trải qua bản thử nghiệm, vì thế rất mong nhận được những góp ý để dịch vụ ngày càng hoàn thiện hơn."
+                  : "Billify is in beta. We'd love to hear your thoughts so we can improve the service."}
               </p>
-              <div className="flex gap-2 p-1.5 bg-stone-50 rounded-2xl border border-stone-100 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                <Input
-                  placeholder={t.newsletterPlaceholder}
-                  className="bg-transparent border-none shadow-none focus-visible:ring-0 text-sm font-medium placeholder:text-stone-400 placeholder:font-normal"
-                />
-                <Button size="icon" className="bg-stone-900 hover:bg-stone-800 rounded-xl shrink-0">
-                  <ArrowRight size={18} />
-                </Button>
-              </div>
+              <Link href="/feedback" className="inline-block group">
+                <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl border border-stone-200 bg-stone-50/50 hover:bg-white text-stone-600 hover:text-stone-900 font-bold text-sm transition-all hover:shadow-sm">
+                  <Mail className="w-4 h-4 text-stone-400 group-hover:text-stone-900 transition-colors" />
+                  <span>{language === 'vi' ? 'Viết Góp Ý' : 'Write Feedback'}</span>
+                  <ArrowRight className="w-4 h-4 opacity-0 -ml-3 group-hover:opacity-100 group-hover:translate-x-1 group-hover:ml-0 transition-all duration-300 text-stone-400 group-hover:text-stone-900" />
+                </div>
+              </Link>
             </div>
           </div>
         </div>

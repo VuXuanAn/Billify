@@ -160,7 +160,7 @@ export function PersonalSlip({
                             <div key={item.id} className="flex justify-between items-center group/item">
                                 <div className="space-y-0.5">
                                     <p className="text-sm font-bold text-stone-800 group-hover/item:text-indigo-600 transition-colors">{item.name}</p>
-                                    <p className="text-[10px] text-stone-400 font-medium">Chia {item.participantCount} (Gốc: {formatCurrency(item.amount)})</p>
+                                    <p className="text-[10px] text-stone-400 font-medium">{formatCurrency(item.amount).replace('₫', '').trim()} / {item.participantCount}</p>
                                 </div>
                                 <div className="text-sm font-mono font-bold text-stone-900 bg-stone-50 px-3 py-1 rounded-lg">
                                     {formatCurrency(Math.round(item.share))}

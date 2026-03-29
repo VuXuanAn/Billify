@@ -10,7 +10,7 @@ export const vi: Translation = {
     betaWarning: "Billify hiện đang trong giai đoạn thử nghiệm. Dữ liệu của bạn được lưu trữ cục bộ trong URL hoặc bộ nhớ trình duyệt.",
     copyright: "Phát triển với ❤️ bởi đội ngũ Billify",
     terms: "Điều khoản",
-    supportOnKofi: "Ủng hộ qua Ko-fi",
+    supportOnKofi: "Buy me a coffee",
     save: "Lưu thay đổi",
     saving: "Đang lưu...",
     saved: "Đã lưu thành công",

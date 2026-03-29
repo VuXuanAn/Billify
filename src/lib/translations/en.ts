@@ -10,7 +10,7 @@ export const en: Translation = {
     betaWarning: "Billify is currently in beta. Your data is stored locally in the URL or browser storage.",
     copyright: "Built with ❤️ by Billify Team",
     terms: "Terms of Use",
-    supportOnKofi: "Support on Ko-fi",
+    supportOnKofi: "Buy me a coffee",
     save: "Save Changes",
     saving: "Saving...",
     saved: "Saved Successfully",

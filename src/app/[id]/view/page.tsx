@@ -46,6 +46,12 @@ export default function DynamicViewPage() {
     const editorT = translations[language].editor;
 
     useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setViewMode("personal");
+        }
+    }, []);
+
+    useEffect(() => {
         async function loadData() {
             if (!groupId) {
                 setIsLoading(false);

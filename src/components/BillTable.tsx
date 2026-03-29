@@ -174,13 +174,18 @@ export function BillTable({
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const lastDataRef = useRef<string>("");
+    const lastDataRef = useRef<string | null>(null);
 
     // Sync external data changes if needed
     React.useEffect(() => {
         if (!isReadOnly && onDataChange) {
             const currentDataObj = { groupName, paymentBank, paymentAccount, paymentQR, members, items, donations, participation, paymentStatus };
             const dataString = JSON.stringify(currentDataObj);
+
+            if (lastDataRef.current === null) {
+                lastDataRef.current = dataString;
+                return;
+            }
 
             if (dataString !== lastDataRef.current) {
                 lastDataRef.current = dataString;
@@ -625,7 +630,7 @@ export function BillTable({
                                         </div>
                                         <button
                                             onClick={handleCopyAccount}
-                                            className="ml-2 p-1.5 bg-white border border-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 opacity-0 group-hover/bank-info:opacity-100 transition-all shadow-sm"
+                                            className="cursor-pointer ml-2 p-1.5 bg-white border border-stone-100 rounded-lg text-stone-400 hover:text-indigo-600 opacity-0 group-hover/bank-info:opacity-100 transition-all shadow-sm"
                                         >
                                             {copiedAccount ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                         </button>
@@ -652,7 +657,7 @@ export function BillTable({
                                     {/* Edit name */}
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <button className="flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest group/edit">
+                                            <button className="cursor-pointer flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest group/edit">
                                                 <Edit3 className="h-3.5 w-3.5" />
                                                 <span>Sửa tên</span>
                                             </button>
@@ -679,7 +684,7 @@ export function BillTable({
                                             <div className="w-px h-5 bg-stone-200" />
                                             <button
                                                 onClick={handleGoToView}
-                                                className="flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-stone-50 hover:text-stone-800 transition-colors text-[11px] font-black uppercase tracking-widest"
+                                                className="cursor-pointer flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-stone-50 hover:text-stone-800 transition-colors text-[11px] font-black uppercase tracking-widest"
                                                 title={commonT.view}
                                             >
                                                 <Eye className="h-3.5 w-3.5" />
@@ -693,7 +698,7 @@ export function BillTable({
                                             <div className="w-px h-5 bg-stone-200" />
                                             <button
                                                 onClick={() => setIsDeleteDialogOpen(true)}
-                                                className="flex items-center gap-2 px-4 py-2.5 text-stone-300 hover:bg-red-50 hover:text-red-500 transition-colors text-[11px] font-black uppercase tracking-widest"
+                                                className="cursor-pointer flex items-center gap-2 px-4 py-2.5 text-stone-500 hover:bg-red-50 hover:text-red-600 transition-colors text-[11px] font-black uppercase tracking-widest"
                                                 title="Xóa bill này"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -822,7 +827,7 @@ export function BillTable({
                                     {!isReadOnly && (
                                         <button
                                             onClick={() => handleRemoveDonations(sponsor.id)}
-                                            className="absolute -top-2 -right-2 h-6 w-6 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover/sponsor:opacity-100 transition-opacity hover:bg-amber-600 z-20"
+                                            className="cursor-pointer absolute -top-2 -right-2 h-6 w-6 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover/sponsor:opacity-100 transition-opacity hover:bg-amber-600 z-20"
                                             title="Xóa ủng hộ của người này"
                                         >
                                             <Trash2 className="h-3 w-3" />
@@ -848,30 +853,25 @@ export function BillTable({
                             <span className="text-[10px] uppercase tracking-widest font-black">Ủng hộ</span>
                         </Button>
 
-                        {handleSave && (
-                            <Button
-                                onClick={handleSave}
-                                disabled={saveStatus === "saving"}
-                                className={`font-bold rounded-lg h-10 px-3 sm:px-5 flex items-center justify-center gap-2 shadow-sm transition-all ${saveStatus === "success"
-                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none"
-                                    : saveStatus === "error"
-                                        ? "bg-red-600 hover:bg-red-700 text-white border-none"
-                                        : "bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-indigo-100 shadow-md"
-                                    }`}
+                        {saveStatus !== "idle" && saveStatus && (
+                            <div className={`font-bold rounded-lg h-10 px-3 sm:px-5 flex items-center justify-center gap-2 transition-all ${saveStatus === "success"
+                                ? "text-emerald-600"
+                                : saveStatus === "error"
+                                    ? "text-red-600"
+                                    : "text-stone-400"
+                                }`}
                             >
                                 {saveStatus === "saving" ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : saveStatus === "success" ? (
                                     <Check className="h-4 w-4" />
-                                ) : saveStatus === "error" ? (
+                                ) : saveStatus === "error" && (
                                     <AlertCircle className="h-4 w-4" />
-                                ) : (
-                                    <Save className="h-4 w-4" />
                                 )}
                                 <span className="text-[10px] uppercase tracking-widest font-black">
-                                    {saveStatus === "saving" ? commonT.saving : saveStatus === "success" ? commonT.saved : saveStatus === "error" ? commonT.error : commonT.save}
+                                    {saveStatus === "saving" ? commonT.saving : saveStatus === "success" ? commonT.saved : saveStatus === "error" ? commonT.error : ""}
                                 </span>
-                            </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -885,16 +885,16 @@ export function BillTable({
                         <Table>
                             <TableHeader className="bg-stone-50 text-stone-900/30 border-b border-stone-200">
                                 <TableRow className="hover:bg-transparent text-stone-900 placeholder:text-stone-400">
-                                    <TableHead className="w-[140px] sm:w-[180px] md:w-[240px] p-0 border-r border-b border-stone-200 bg-stone-50 text-primary sticky left-0 z-20 rounded-tl-xl align-top relative overflow-hidden group">
+                                    <TableHead className="w-[140px] sm:w-[180px] md:w-[240px] p-0 border-r border-b border-stone-200 bg-stone-50 sticky left-0 z-20 rounded-tl-xl align-top relative overflow-hidden group">
                                         <div className="absolute inset-0 pointer-events-none">
-                                            <svg className="absolute w-full h-full text-stone-200" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                            <svg className="absolute w-full h-full text-stone-200/60" preserveAspectRatio="none" viewBox="0 0 100 100" vectorEffect="non-scaling-stroke">
                                                 <line x1="0" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="1" />
                                             </svg>
                                         </div>
-                                        <div className="absolute top-4 right-3 sm:right-6 text-[10px] font-black tracking-[0.2em] text-primary text-right group-hover:text-stone-900/60 transition-colors">
+                                        <div className="absolute top-4 right-4 sm:right-6 text-xs font-bold tracking-wider text-stone-600 uppercase text-right group-hover:text-indigo-600 transition-colors">
                                             {t.category}
                                         </div>
-                                        <div className="absolute bottom-4 left-3 sm:left-6 text-[10px] font-black tracking-[0.2em] text-primary group-hover:text-stone-900/60 transition-colors">
+                                        <div className="absolute bottom-4 left-4 sm:left-6 text-xs font-bold tracking-wider text-stone-600 uppercase group-hover:text-indigo-600 transition-colors">
                                             {t.members}
                                         </div>
                                     </TableHead>
@@ -903,27 +903,27 @@ export function BillTable({
                                             onClick={openAddCategoryDialog}
                                             className="w-[130px] border-l border-r border-b border-indigo-100 bg-indigo-50/60 p-0 align-middle cursor-pointer hover:bg-indigo-100/60 transition-colors"
                                         >
-                                            <div className="flex flex-col items-center justify-center gap-2 py-10 text-indigo-400 hover:text-indigo-600 transition-colors">
-                                                <Plus className="h-4 w-4" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{t.addItem}</span>
+                                            <div className="flex flex-col items-center justify-center gap-2 py-6 text-indigo-500 hover:text-indigo-700 transition-colors">
+                                                <Plus className="h-5 w-5" />
+                                                <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap">{t.addItem}</span>
                                             </div>
                                         </TableHead>
                                     )}
                                     {items.map(item => (
                                         <TableHead key={item.id} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] border-l border-r border-b border-stone-200 p-0 align-top group/head transition-colors hover:bg-stone-50/50">
-                                            <div className="text-primary p-4 flex flex-row items-center justify-between gap-3 h-full ">
-                                                <div className="relative flex-1">
+                                            <div className="p-3 sm:p-4 flex flex-row items-center justify-between gap-2 h-full">
+                                                <div className="relative flex-1 min-w-[80px]">
                                                     <Input
                                                         value={item.name}
                                                         onChange={(e) => !isReadOnly && setItems(items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
                                                         readOnly={isReadOnly}
-                                                        className={`h-8 border border-transparent bg-transparent  placeholder:text-primary font-black text-primary px-2 -ml-2 text-sm focus-visible:ring-indigo-100 placeholder:text-stone-500 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text'}`}
+                                                        className={`h-8 border border-transparent bg-transparent text-left font-bold text-sm text-stone-800 focus-visible:ring-indigo-100 placeholder:text-stone-400 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm cursor-text px-2 -ml-2'}`}
                                                         placeholder="Tên khoản chi..."
                                                         title={!isReadOnly ? 'Nhấn để sửa' : undefined}
                                                     />
                                                 </div>
 
-                                                <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border border-transparent transition-all ${isReadOnly ? 'border-none shadow-none bg-transparent px-0' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm focus-within:bg-white focus-within:border-stone-200 focus-within:shadow-sm shrink-0'}`}>
+                                                <div className={`flex items-center justify-end gap-1.5 px-3 py-1.5 rounded-lg border border-transparent transition-all shrink-0 ${isReadOnly ? 'border-none shadow-none bg-transparent px-0' : 'hover:bg-white hover:border-stone-200 hover:shadow-sm focus-within:bg-white focus-within:border-stone-200 focus-within:shadow-sm'}`}>
                                                     <IMaskInput
                                                         id={`input-amount-${item.id}`}
                                                         name={`input-amount-${item.id}`}
@@ -943,18 +943,18 @@ export function BillTable({
                                                             }
                                                         }}
                                                         disabled={isReadOnly}
-                                                        className={`h-6 w-24 text-right font-mono text-primary placeholder:text-stone-400 font-bold text-sm tracking-tighter p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default opacity-100 bg-transparent disabled:text-stone-900' : 'cursor-text '}`}
+                                                        className={`h-5 w-20 text-right font-mono font-bold text-[13px] tracking-tight p-0 bg-transparent border-none focus:outline-none focus:ring-0 ${isReadOnly ? 'cursor-default text-stone-600 disabled:text-stone-600' : 'cursor-text text-indigo-600'}`}
                                                         title={!isReadOnly ? 'Nhấn để sửa số tiền' : undefined}
                                                     />
-                                                     <span className="text-[10px] font-black text-primary">VND</span>
+                                                     <span className="text-[10px] font-bold text-stone-400 uppercase">VNĐ</span>
                                                  </div>
                                              </div>
                                          </TableHead>
                                      ))}
-                                    <TableHead className="w-[110px] sm:w-[150px] md:w-[200px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-[100px] sm:right-[120px] z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em]">
+                                    <TableHead className="w-[110px] sm:w-[150px] md:w-[200px] font-bold text-stone-600 bg-stone-50 backdrop-blur-xl sticky right-[100px] sm:right-[120px] z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-6 align-middle text-center text-xs uppercase tracking-wider">
                                         Cần đóng
                                     </TableHead>
-                                    <TableHead className="w-[100px] sm:w-[120px] font-black text-stone-900 bg-stone-50 text-primary backdrop-blur-xl sticky right-0 z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-10 text-center text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-stone-50/50 rounded-tr-xl">
+                                    <TableHead className="w-[100px] sm:w-[120px] font-bold text-stone-600 bg-stone-50 backdrop-blur-xl sticky right-0 z-20 shadow-[inset_1px_-1px_0_0_theme(colors.stone.200),-5px_0_15px_rgba(0,0,0,0.02)] backdrop-blur-md py-6 align-middle text-center text-xs uppercase tracking-wider transition-colors hover:bg-stone-100/50 rounded-tr-xl">
                                         Đã thanh toán
                                     </TableHead>
                                 </TableRow>
@@ -1104,7 +1104,7 @@ export function BillTable({
                                         >
                                             <button
                                                 onClick={openAddMemberDialog}
-                                                className="w-full flex items-center justify-center gap-2 text-stone-400 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all text-xs font-black uppercase tracking-widest py-4"
+                                                className="cursor-pointer w-full flex items-center justify-center gap-2 text-stone-400 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all text-xs font-black uppercase tracking-widest py-4"
                                             >
                                                 <UserPlus className="h-4 w-4" />
                                                 {t.addMember}
@@ -1122,13 +1122,13 @@ export function BillTable({
                     <div className="flex border-b border-stone-200">
                         <button
                             onClick={() => setActiveTab('member')}
-                            className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'member' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
+                            className={`cursor-pointer flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'member' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
                         >
                             {t.viewByMember}
                         </button>
                         <button
                             onClick={() => setActiveTab('item')}
-                            className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'item' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
+                            className={`cursor-pointer flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'item' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-stone-400 hover:text-stone-600'}`}
                         >
                             {t.viewByItem}
                         </button>
@@ -1377,11 +1377,21 @@ export function BillTable({
                                 <Label className="text-xs font-bold text-stone-300 uppercase">{t.amount} (VNĐ)</Label>
                                 <div className="space-y-3">
                                     <div className="relative">
-                                        <Input
-                                            type="number"
-                                            value={newCategoryAmount}
-                                            onChange={(e) => setNewCategoryAmount(e.target.value)}
-                                            className="font-mono rounded-lg border-stone-200 h-10 pl-8 font-semibold text-stone-900"
+                                        <IMaskInput
+                                            value={newCategoryAmount === "0" || newCategoryAmount === "" ? "" : newCategoryAmount.toString()}
+                                            mask={Number}
+                                            scale={0}
+                                            thousandsSeparator="."
+                                            radix=","
+                                            mapToRadix={['.']}
+                                            min={0}
+                                            unmask={true}
+                                            onAccept={(value, mask) => {
+                                                const val = mask.unmaskedValue ? mask.unmaskedValue : "0";
+                                                setNewCategoryAmount(val);
+                                            }}
+                                            placeholder="0"
+                                            className="flex w-full bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-stone-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono rounded-lg border border-stone-200 h-10 pl-8 font-semibold text-stone-900"
                                         />
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 font-bold">₫</span>
                                     </div>
@@ -1391,7 +1401,7 @@ export function BillTable({
                                                 key={amount}
                                                 type="button"
                                                 onClick={() => setNewCategoryAmount(amount.toString())}
-                                                className="px-3 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 border border-stone-200 text-[10px] font-bold text-slate-600 hover:bg-stone-100 hover:border-stone-300 transition-colors"
+                                                className="cursor-pointer px-3 py-1.5 rounded-md bg-stone-50 hover:bg-stone-100 border border-stone-200 text-[10px] font-bold text-slate-600 hover:bg-stone-100 hover:border-stone-300 transition-colors"
                                             >
                                                 {amount.toLocaleString('vi-VN')}
                                             </button>
@@ -1460,11 +1470,21 @@ export function BillTable({
                             <Label className="text-xs font-bold text-stone-300 uppercase">Số tiền ủng hộ (VNĐ)</Label>
                             <div className="space-y-4">
                                 <div className="relative">
-                                    <Input
-                                        type="number"
-                                        value={newDonationAmount}
-                                        onChange={(e) => setNewDonationAmount(e.target.value)}
-                                        className="font-mono h-12 text-2xl font-bold border-none bg-transparent text-stone-900 placeholder:text-stone-400 p-0 focus-visible:ring-0 pl-8"
+                                    <IMaskInput
+                                        value={newDonationAmount === "0" || newDonationAmount === "" ? "" : newDonationAmount.toString()}
+                                        mask={Number}
+                                        scale={0}
+                                        thousandsSeparator="."
+                                        radix=","
+                                        mapToRadix={['.']}
+                                        min={0}
+                                        unmask={true}
+                                        onAccept={(value, mask) => {
+                                            const val = mask.unmaskedValue ? mask.unmaskedValue : "0";
+                                            setNewDonationAmount(val);
+                                        }}
+                                        placeholder="0"
+                                        className="flex w-full text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-50 font-mono h-12 text-2xl font-bold border-none bg-transparent text-stone-900 placeholder:text-stone-400 py-2 focus-visible:outline-none focus:ring-0 focus-visible:ring-0 pl-8"
                                     />
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 font-bold">₫</span>
                                     <div className="h-0.5 bg-slate-200 w-full" />
@@ -1475,7 +1495,7 @@ export function BillTable({
                                             key={amount}
                                             type="button"
                                             onClick={() => setNewDonationAmount(amount.toString())}
-                                            className="px-3 py-1.5 rounded-md bg-white border border-stone-200 text-[10px] font-bold text-slate-600 hover:bg-stone-100 hover:border-stone-300 transition-colors"
+                                            className="cursor-pointer px-3 py-1.5 rounded-md bg-white border border-stone-200 text-[10px] font-bold text-slate-600 hover:bg-stone-100 hover:border-stone-300 transition-colors"
                                         >
                                             {amount.toLocaleString('vi-VN')}
                                         </button>

@@ -47,12 +47,6 @@ export default function Home() {
               >
                 {t.hero.getStarted}
               </Button>
-              <Button
-                variant="outline"
-                className="border-stone-200 text-stone-700 bg-white hover:bg-stone-50 font-bold h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg w-full sm:w-auto"
-              >
-                {t.hero.learnMore}
-              </Button>
             </div>
           </div>
 
